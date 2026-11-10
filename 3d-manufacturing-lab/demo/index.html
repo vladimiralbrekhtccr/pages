@@ -1,0 +1,2069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Intelligent Manufacturing Laboratory · walkable 3D</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #ddd;
+    font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  #app { position: fixed; inset: 0; }
+  #hud { position: fixed; top: 10px; left: 12px; padding: 10px 12px;
+    background: rgba(0,0,0,.65); border: 1px solid #333; border-radius: 6px;
+    max-width: 330px; z-index: 3; }
+  #hud b { color: #fff; }
+  #hud kbd { background: #222; border: 1px solid #444; border-radius: 3px; padding: 0 4px; }
+  button { background: #222831; color: #e8eaed; border: 1px solid #39404b;
+    border-radius: 5px; padding: 5px 9px; cursor: pointer; font: inherit; margin: 3px 4px 3px 0; }
+  button.on { background: #2f6df0; border-color: #2f6df0; color: #fff; }
+  button.warn { border-color: #5a2a2a; }
+  #hint { color: #7e8794; margin-top: 6px; }
+  #langRow .lang { padding: 4px 10px; font-size: 12px; }
+  #langRow .lang.on { background: #35543f; border-color: #7fd0a0; color: #dff5e6; }
+  #langRow .lang[disabled] { opacity: .35; cursor: not-allowed; }
+  .devonly { display: none !important; }
+  body.dev .devonly { display: inline-block !important; }
+  body.dev div.devonly { display: block !important; }
+  #status { position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,.65);
+    border: 1px solid #333; border-radius: 6px; padding: 6px 10px; color: #aeb6c2; z-index: 3; }
+  #entryVeil { position: fixed; inset: 0; z-index: 40; display: flex;
+    align-items: center; justify-content: center; background: rgba(6,8,12,.86);
+    transition: opacity .8s ease; }
+  #entryVeil.gone { opacity: 0; pointer-events: none; }
+  /* touch devices: joystick + drag-to-look; the info panel waits until the visitor enters */
+  #app canvas { touch-action: none; }
+  #joy { position: fixed; left: 22px; bottom: 150px; width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255,255,255,.10); border: 2px solid rgba(255,255,255,.35); z-index: 9;
+    display: none; touch-action: none; }
+  #joyKnob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px;
+    border-radius: 50%; background: rgba(47,109,240,.85); border: 2px solid #9fbbff; pointer-events: none; }
+  #lookHint { position: fixed; right: 16px; bottom: 200px; z-index: 9; display: none; color: rgba(255,255,255,.7);
+    font-size: 12px; text-align: right; pointer-events: none; }
+  body.touch.inside #joy, body.touch.inside #lookHint { display: block; }
+  body:not(.inside) #hud { visibility: hidden; }
+  body.touch #inspectPrompt { bottom: 42%; max-width: 80vw; }
+  #entryVeil { background: rgba(6,8,12,.94); }
+  @media (max-width: 600px) {
+    #hud { max-width: calc(100vw - 48px); font-size: 11px; padding: 7px 9px; }
+    #entryCard h2 { font-size: 24px; } #entryCard p { font-size: 14px; }
+  }
+  #entryCard { text-align: center; color: #e8eaed; max-width: 430px; padding: 26px; }
+  #entryCard h2 { margin: 0 0 10px; font-size: 30px; color: #fff; letter-spacing: .5px; }
+  #entryCard p { margin: 0 0 22px; color: #aeb6c2; font-size: 15px; line-height: 1.65; }
+  #enterBtn { background: #2f6df0; border: 1px solid #4d84ff; color: #fff;
+    border-radius: 24px; padding: 13px 34px; font: inherit; font-size: 15px; cursor: pointer; }
+  #enterBtn:hover { background: #3f7bff; }
+  #enterBtn:disabled { background: #2a3550; border-color: #3a4560; color: #9fb0d0;
+    cursor: default; }
+  #tourStart { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    z-index: 12; background: #2f6df0; border: 1px solid #4d84ff; color: #fff;
+    border-radius: 22px; padding: 11px 26px; font-size: 14px; cursor: pointer;
+    box-shadow: 0 4px 18px rgba(0,0,0,.45); }
+  #tourStart:hover { background: #3f7bff; }
+  #tourBar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    z-index: 12; display: none; align-items: center; gap: 12px;
+    background: rgba(12,16,22,.93); border: 1px solid #39404b; border-radius: 26px;
+    padding: 8px 10px 8px 14px; box-shadow: 0 6px 22px rgba(0,0,0,.5); }
+  #tourBar button { background: #222831; border: 1px solid #39404b; color: #e8eaed;
+    border-radius: 50%; width: 34px; height: 34px; font-size: 17px; cursor: pointer;
+    padding: 0; line-height: 1; }
+  #tourBar button:hover { background: #2f6df0; border-color: #2f6df0; }
+  #tourBar button:disabled { opacity: .35; cursor: default; background: #222831; }
+  #tourInfo { display: flex; flex-direction: column; min-width: 210px; text-align: center; }
+  #tourStep { color: #7fb0ff; font-size: 11.5px; letter-spacing: .6px; text-transform: uppercase; }
+  #tourName { color: #e8eaed; font-size: 14px; }
+  #finishWrap { position: fixed; inset: 0; z-index: 30; display: none;
+    align-items: center; justify-content: center; background: rgba(8,10,14,.72); }
+  #finishCard { background: #14181f; border: 1px solid #39404b; border-radius: 12px;
+    padding: 24px 28px; max-width: 420px; color: #dde3ea; text-align: center; }
+  #finishCard h3 { margin: 0 0 8px; color: #fff; font-size: 18px; }
+  #finishCard p { margin: 0 0 18px; color: #aeb6c2; font-size: 14px; line-height: 1.6; }
+  #finishCard button { margin: 0 5px; }
+  #credits { position: fixed; bottom: 6px; right: 10px; z-index: 3; font-size: 10px;
+    color: rgba(190,200,210,.55); text-align: right; line-height: 1.4; pointer-events: none; }
+  #credits a { color: rgba(190,200,210,.7); pointer-events: auto; }
+  #info { position: fixed; right: 12px; top: 12px; max-width: 300px; display: none;
+    background: rgba(10,14,20,.85); border: 1px solid #2f6df0; border-radius: 8px;
+    padding: 12px; z-index: 4; }
+  #info h3 { margin: 0 0 6px; color: #fff; font-size: 13px; }
+  #info p { margin: 0 0 8px; color: #cfd6e0; }
+  #askBox { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%);
+    width: min(560px, 90vw); display: none; z-index: 8;
+    background: rgba(10,14,20,.92); border: 1px solid #2f6df0; border-radius: 10px; padding: 10px; }
+  #askBox input { width: 100%; background: #10141a; color: #e8eaed; border: 1px solid #333b46;
+    border-radius: 6px; padding: 9px 10px; font: inherit; }
+  #askBox .row { display: flex; gap: 6px; margin-top: 8px; justify-content: flex-end; }
+  /* MISide-style floating subtitles: pure text over the world, no box */
+  #sub { position: fixed; left: 50%; bottom: 17%; transform: translateX(-50%);
+    width: min(880px, 92vw); text-align: center; display: none; z-index: 6;
+    pointer-events: none; opacity: 1; transition: opacity 1.2s ease; }
+  #sub.fade { opacity: 0; }
+  #subQ { font: 600 14px "Trebuchet MS", Verdana, sans-serif; color: rgba(255,255,255,.75);
+    text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 8px rgba(0,0,0,.6); margin-bottom: 8px; }
+  #subText { font: 700 24px/1.5 "Trebuchet MS", Verdana, sans-serif;
+    color: #ffb45e; letter-spacing: .3px;
+    text-shadow: 0 2px 4px rgba(0,0,0,.95), 0 0 14px rgba(0,0,0,.7),
+                 0 0 2px rgba(120,60,0,.9), 0 0 26px rgba(255,150,40,.25); }
+  #subText .w { opacity: 0; display: inline; animation: wpop .22s ease-out forwards; }
+  @keyframes wpop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+  #subStop { position: fixed; left: 50%; bottom: 11%; transform: translateX(-50%);
+    display: none; z-index: 6; background: rgba(0,0,0,.45); color: rgba(255,255,255,.85);
+    border: 0; border-radius: 20px; padding: 5px 16px; font-size: 12px;
+    backdrop-filter: blur(4px); }
+  #subStop:hover { background: rgba(0,0,0,.7); }
+  /* inspect mode: proximity prompt + slide-in field-guide panel */
+  #inspectPrompt { position: fixed; left: 50%; bottom: 26%; transform: translateX(-50%);
+    display: none; z-index: 5; pointer-events: none;
+    background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.25);
+    border-radius: 20px; padding: 6px 18px; color: #fff; font-size: 13px;
+    backdrop-filter: blur(4px); }
+  #inspectPrompt kbd { background: #222; border: 1px solid #555; border-radius: 3px; padding: 0 5px; }
+  #inspectPrompt b { color: #8fd8a8; }
+  /* Matches the Exhibit Lab palette used by the static (Group 1) pages, so the
+     two study arms look like one product rather than two different tools. */
+  #inspect { position: fixed; top: 0; right: 0; bottom: 0; width: min(430px, 94vw);
+    z-index: 7; background: #f6f1e7; border-left: 1px solid #d8cfb8;
+    padding: 22px 26px; overflow-y: auto; color: #33302a;
+    transform: translateX(105%); transition: transform .45s cubic-bezier(.2,.8,.2,1);
+    font-family: Georgia, "Times New Roman", serif; }
+  #inspect.open { transform: translateX(0); }
+  #inspect .family { display: inline-block; background: #e6dff2; color: #5d4d85;
+    border-radius: 6px; padding: 3px 12px; font-size: 11px; letter-spacing: 1.5px;
+    font-weight: 700; }
+  #inspect h2 { margin: 12px 0 4px; color: #33302a; font-size: 27px; line-height: 1.2;
+    font-weight: 700; }
+  #inspect .sub { font-style: italic; color: #7a7361; margin-bottom: 12px; font-size: 15px; }
+  #inspect .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  #inspect .tag { background: #e9f0e2; color: #4c663d; border-radius: 6px;
+    padding: 3px 11px; font-size: 12px; }
+  #inspect .sec { border-top: 1px dashed #ddd3bd; padding: 14px 0; }
+  #inspect .sec b { color: #3f5533; font-size: 16px; display: block; margin-bottom: 6px; }
+  #inspect .sec p { margin: 0 0 8px; color: #55503f; font-size: 15px; line-height: 1.65; }
+  #inspect .unconfirmed { background: #fdf6df; border: 1px solid #eadfab;
+    border-radius: 8px; padding: 10px 13px; font-size: 14px; color: #7c5a2d; }
+  #inspect .btns { margin: 14px 0 6px; display: flex; gap: 8px; }
+  #inspect .btns button { padding: 9px 18px; font-size: 14px; background: #4c663d;
+    color: #fff; border: 0; border-radius: 8px; cursor: pointer;
+    font-family: inherit; }
+  #inspect .btns button:hover { background: #5d7a4c; }
+  #inspectClose { position: absolute; top: 10px; right: 12px; background: none;
+    border: 0; color: #8a8371; font-size: 24px; cursor: pointer; line-height: 1; }
+  #inspectClose:hover { color: #33302a; }
+  /* inspect: 3D hotspot pins + left tools card */
+  #pins3 { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+  .pin3 { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+    display: flex; align-items: center; justify-content: center;
+    background: #35543f; color: #fff; border: 2px solid #fff; border-radius: 50%;
+    font-size: 13px; font-weight: 700; cursor: pointer; pointer-events: auto;
+    box-shadow: 0 1px 5px rgba(0,0,0,.5); }
+  .pin3:hover { background: #4c7a58; transform: scale(1.15); }
+  #insTools { position: fixed; left: 14px; top: 50%; transform: translateY(-50%);
+    z-index: 7; width: 210px; display: none;
+    background: #fbf8f1; border: 1px solid #d8cfb8; border-radius: 12px;
+    padding: 14px 16px; font-family: Georgia, "Times New Roman", serif; }
+  #insTools h4 { margin: 0 0 8px; color: #3f5533; font-size: 12px; letter-spacing: 1px;
+    text-transform: uppercase; }
+  #insTools .meta { color: #7a7361; font-size: 12px; margin-bottom: 10px; line-height: 1.5; }
+  #insTools button { width: 100%; margin: 3px 0; text-align: left; font-size: 13px; }
+  #insLegend { margin-top: 10px; border-top: 1px solid #2a313b; padding-top: 8px; }
+  #insLegend div { color: #c9d1dc; font-size: 12.5px; padding: 4px 2px; cursor: pointer;
+    border-radius: 5px; line-height: 1.35; }
+  #insLegend div:hover { background: rgba(255,255,255,.07); }
+  #insLegend .n { display: inline-flex; width: 18px; height: 18px; border-radius: 50%;
+    background: #35543f; color: #fff; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; margin-right: 6px; }
+  #insSections .cu.hl { background: #1d2a20; border-radius: 6px; padding: 6px 8px; }
+  /* conversation log */
+  #logPanel { position: fixed; right: 12px; top: 60px; bottom: 60px; width: min(360px, 86vw);
+    display: none; z-index: 7; background: rgba(10,12,16,.92); border: 1px solid #333;
+    border-radius: 10px; padding: 12px; overflow-y: auto; }
+  #logPanel h3 { margin: 0 0 8px; color: #fff; font-size: 13px; }
+  .le { border-top: 1px solid #262b33; padding: 8px 2px; }
+  .lq { color: #8b94a3; font-size: 12px; margin-bottom: 3px; }
+  .la { color: #ffcf9a; font-size: 13px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud">
+  <b>Intelligent Manufacturing Laboratory</b><br>
+  <span style="color:#8b93a0">Room 7e.230, Nazarbayev University — a real FESTO training line,
+  digitised from phone video as 3D Gaussian Splats. Ask the tutor anything you see.</span><br>
+  <div style="margin-top:6px">
+    <button id="mOrbit">orbit</button><button id="mWalk" class="on">walk</button>
+  </div>
+  <div class="devonly">
+    <button id="gMove" class="on">move (1)</button><button id="gRot">rotate (2)</button>
+    <button id="gScale">scale (3)</button>
+  </div>
+  <div class="devonly">
+    <button id="dup">duplicate</button><button id="del" class="warn">delete</button>
+  </div>
+  <div>
+    <button id="askBtn">💬 ask the tutor (Q)</button><button id="logBtn">📜 log</button><button id="finishBtn" style="display:none;background:#2e6b3f;border-color:#3f8a54">✓ I'm finished</button><button id="layoutBtn" class="devonly">📋 layout</button><button id="hsEdit" class="devonly">✎ move info points</button>
+  </div>
+  <div id="langRow">
+    <button class="lang" data-l="en">EN</button><button class="lang" data-l="zh" disabled title="coming soon">中文</button><button class="lang" data-l="ru" disabled title="coming soon">RU</button><button class="lang" data-l="kk" disabled title="coming soon">ҚАЗ</button>
+  </div>
+  <div id="hint"><kbd>drag</kbd> orbit · <kbd>scroll</kbd> zoom · click a blue <b>info point</b>
+    on the machines · <kbd>Q</kbd> ask the tutor anything</div>
+</div>
+
+<div id="askBox">
+  <input id="askInput" maxlength="500" placeholder="ask the tutor about this exhibit…">
+  <div class="row"><button id="askSend">send</button><button id="askCancel">cancel</button></div>
+</div>
+<div id="sub">
+  <div id="subQ"></div>
+  <div id="subText"></div>
+</div>
+<button id="subStop">■ stop voice</button>
+<div id="logPanel"><h3>📜 conversation log</h3><div id="logEntries"></div></div>
+<div id="inspectPrompt">🔍 <kbd>E</kbd> or click — inspect the exhibit</div>
+<div id="pins3"></div>
+<div id="insTools">
+  <h4>view tools</h4>
+  <div class="meta" id="insMeta"></div>
+  <button id="insSize">📏 real size</button>
+  <button id="insSpin">🔄 auto-rotate</button>
+  <div id="insLegend"></div>
+</div>
+<div id="inspect">
+  <button id="inspectClose">✕</button>
+  <div class="family" id="insFamily"></div>
+  <h2 id="insTitle"></h2>
+  <div class="sub" id="insSub"></div>
+  <div class="tags" id="insTags"></div>
+  <div class="btns">
+    <button id="insNarrate">🔊 narrate</button>
+    <button id="insAsk">💬 ask (Q)</button>
+  </div>
+  <div id="insSections"></div>
+</div>
+<div id="info"><h3 id="infoTitle"></h3><p id="infoText"></p><button id="infoSay">🔊 narrate</button>
+<button id="infoClose">close</button></div>
+<div id="finishWrap"><div id="finishCard">
+  <h3>Finished exploring?</h3>
+  <p>You will move on to a few questions about the lab. You will not be able to come
+     back to the 3D view afterwards.</p>
+  <button id="finishYes">Yes, continue →</button>
+  <button id="finishNo" style="background:#2a303a;border:1px solid #39404b">Keep exploring</button>
+</div></div>
+<div id="entryVeil"><div id="entryCard">
+  <h2>Intelligent Manufacturing Laboratory</h2>
+  <p>This is a 3D recreation of a real FESTO training line, captured from a phone video, using the technology of 3D Gaussian Splats.<br><br>
+     <span id="howDesk">Please step inside and walk around 3D environment using <b>W,A,S,D</b> buttons on your keyboard to navigate inside the lab.</span><span id="howTouch" style="display:none">Please step inside. Walk with the <b>joystick</b> at the bottom left, <b>drag</b> on the screen to look around, and <b>tap</b> a blue info point to learn about a station.</span></p>
+  <button id="enterBtn">Start</button>
+</div></div>
+<div id="tourBar">
+  <button id="tourPrev" title="previous station">‹</button>
+  <div id="tourInfo"><b id="tourStep">Guided tour</b><span id="tourName">follow the line from start to finish</span></div>
+  <button id="tourNext" title="next station">›</button>
+  <button id="tourExit" title="leave the tour">✕</button>
+</div>
+<div id="joy"><div id="joyKnob"></div></div>
+<div id="lookHint">drag here to look around</div>
+<button id="tourStart">▶ Start guided tour · 9 stations</button>
+<div id="status">loading robot splat…</div>
+<div id="credits">“Modern Scientist in a Lab Coat” by <a href="https://sketchfab.com/3d-models/modern-scientist-in-a-lab-coat-e835a3b126a4463583727dbac2fedecc" target="_blank" rel="noopener">restore50</a> · CC-BY 4.0</div>
+
+<script>
+  // Developer tools (gizmo, duplicate/delete, layout, info-point mover) are hidden
+  // in the participant + competition view. Add ?dev=1 to bring them back; the
+  // elements stay in the DOM either way so no event handler ever binds to null.
+  if (new URLSearchParams(location.search).has('dev')) document.body.classList.add('dev');
+</script>
+<script type="importmap">
+{ "imports": {
+  "three":            "https://esm.sh/three@0.180.0",
+  "three/addons/":    "https://esm.sh/three@0.180.0/examples/jsm/",
+  "@sparkjsdev/spark":"https://sparkjs.dev/releases/spark/2.1.0/spark.module.js"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
+import { EXHIBIT } from './exhibit_robot.js'; // shared content — same as study arms
+
+const status = (t) => document.getElementById('status').textContent = t;
+
+// Cropped robot in its native (PLY, +Z-up) frame — from the user's crop box.
+// measured content bbox (the crop box had empty headroom above the spine)
+const CROP = { min: [-0.2505, -0.1604, -0.5696], max: [-0.0537, 0.0393, -0.0757] };
+const ROBOT_URL = 'assets/robot_object.spz';
+const ROBOT_INFO = {
+  title: 'Articulated robot prototype',
+  text: 'A real lab prototype captured as 3D Gaussian splats from an 86-second phone video: ' +
+        'COLMAP camera reconstruction, splatfacto optimization, then box-cropped out of its ' +
+        'capture scene. 50 thousand gaussians, 1.2 megabytes. Walk around it — the view-dependent ' +
+        'shading is baked in from the real lab lighting.',
+};
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x14171c);
+scene.fog = new THREE.Fog(0x14171c, 14, 26);
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.01, 100);
+camera.position.set(4.6, 3.0, 5.2);
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(1); // fill-rate: biggest lag lever for splats
+renderer.setSize(innerWidth, innerHeight);
+const dom = renderer.domElement;
+document.getElementById('app').appendChild(dom);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+const spark = new SparkRenderer({ renderer });
+scene.add(spark);
+
+// ── room: floor, walls, lights (plain meshes — the "not fortress" environment) ──
+const ROOM = 14, WALL_H = 3.4;
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x3a3f48, 1.25));
+const sun = new THREE.DirectionalLight(0xffffff, 1.05);
+sun.position.set(4, 6, 3);
+scene.add(sun);
+
+// The venue is now the REAL robotics lab (user-cleaned 3DGS zone), scaled to
+// meters via eye-height calibration; floor seated at y=0.
+// raycasting the splat is only needed by the conveyor editor; building that
+// structure costs load time and memory, so the study build stays without it
+const VENUE_PICK = new URLSearchParams(location.search).get('edit') === 'conveyor';
+const venue = new SplatMesh({ url: 'assets/scene_cut1.spz',
+  lod: true,               // build LoD in a worker -> caps per-frame splat count (big FPS win)
+  raycastable: VENUE_PICK, // off in the study build; skips the raycast structure
+});
+venue.rotation.set(THREE.MathUtils.degToRad(-101), THREE.MathUtils.degToRad(-2), THREE.MathUtils.degToRad(-2.5)); // leveled by user
+venue.scale.setScalar(4.48);   // verified: puts camera path at 1.56 m above floor
+venue.position.set(0.013, 1.200, 0.364); // floor exactly at y=0, footprint centered
+scene.add(venue);
+venue.initialized.then(() => status('lab loaded — press Start to step inside'));
+
+// ── articulated robot arm (Mitsubishi MELFA on the FESTO MPS station) ─────────
+// The arm above the pedestal is cut out of the venue (scene_cut2) and reloaded as
+// its own splat so it can turn. Only ONE axis moves: J1, the vertical waist axis
+// through the base cylinder at world (1.102, 0.566), measured from the collar
+// just above the cut. A horizontal cut through a vertical cylinder that spins
+// about its own axis leaves no visible seam — which is why this is a single rigid
+// yaw and not a faked elbow, where a flat cut plane would shear the geometry.
+const ARM_RIG = { cutY: 1.06, axis: [1.102, 0.566], amp: 11, period: 13, freeze: null };
+// Spark would not reliably draw this second SplatMesh while it sat under nested
+// transformed Groups — it loaded (8,528 splats), reported visible, and computed
+// the right world origin, yet rendered nothing. Driving its matrix directly with
+// matrixAutoUpdate off, as a plain child of the scene, is what actually paints.
+// DISABLED — unresolved: this second SplatMesh loads (8,528 splats), reports
+// visible with a correct world matrix, but Spark never paints it, whether nested
+// under Groups or matrix-driven as a direct scene child. Venue is back on
+// scene_cut1 (arm baked in) so the room has no hole. Assets kept:
+// lab_zone/arm_yaw.spz + lab_zone/scene_cut2.spz (venue with the arm removed).
+const ARM_ENABLED = false;
+const armSplat = ARM_ENABLED ? new SplatMesh({ url: 'assets/arm_yaw.spz', raycastable: false }) : null;
+if (armSplat) { armSplat.matrixAutoUpdate = false; scene.add(armSplat); }
+const armBase = new THREE.Matrix4();          // the venue's own placement
+const armToAxis = new THREE.Matrix4(), armFromAxis = new THREE.Matrix4();
+const armSpin = new THREE.Matrix4();
+armToAxis.makeTranslation(ARM_RIG.axis[0], 0, ARM_RIG.axis[1]);
+armFromAxis.makeTranslation(-ARM_RIG.axis[0], 0, -ARM_RIG.axis[1]);
+let armEnabled = true;
+function armYawDeg(t) {
+  if (ARM_RIG.freeze !== null && ARM_RIG.freeze !== undefined) return ARM_RIG.freeze;
+  if (!armEnabled) return 0;
+  // slow ease-in-out sweep with a dwell at each end, like a station cycle
+  const sn = Math.sin(2 * Math.PI * (t % ARM_RIG.period) / ARM_RIG.period);
+  return ARM_RIG.amp * Math.sign(sn) * Math.pow(Math.abs(sn), 0.65);
+}
+function updateArm(t) {
+  if (!armSplat) return;
+  armBase.compose(venue.position, venue.quaternion, venue.scale);
+  armSpin.makeRotationY(THREE.MathUtils.degToRad(armYawDeg(t)));
+  armSplat.matrix.copy(armToAxis).multiply(armSpin).multiply(armFromAxis).multiply(armBase);
+  armSplat.matrixWorldNeedsUpdate = true;
+}
+
+
+// ── conveyor carriers ────────────────────────────────────────────────────────
+// Path clicked on the real belt; already tutor-room world coords. It traces the
+// full physical loop, so closing it gives continuous motion with no fading and no
+// synthetic return. Edit it live in-room with ?edit=conveyor.
+const CONVEYOR = {
+  count: 4, speed: 0.6, lift: 0.010, size: 0.12,
+  // The traced points cover the FULL loop: an outbound run, corner hooks at both
+  // ends, and the return run. Verified — the closing leg is antiparallel to the
+  // main run (54.3 deg vs -126.1 deg) and holds a constant ~0.62 m offset, i.e. it
+  // is the belt's return side, not a shortcut across the floor. So simply closing
+  // the loop is correct, and no synthetic under-deck return is needed.
+  closed: true,
+  mirrorUnder: false,
+  underDrop: 0.24,
+  path: [[0.605,0.925,1.663],[0.844,0.911,1.479],[1.116,0.914,1.300],
+         [0.482,0.892,0.399],[-0.050,0.905,-0.300],[-0.678,0.864,-1.177],
+         [-0.769,0.868,-1.288],[-1.251,0.865,-0.920]],
+};
+let convCurve = null, convLen = 1;
+function rebuildConvCurve() {
+  const top = CONVEYOR.path.map((a) => new THREE.Vector3(a[0], a[1] + CONVEYOR.lift, a[2]));
+  let seq = top;
+  if (CONVEYOR.mirrorUnder && top.length >= 2) {
+    seq = top.concat(top.map((p) => p.clone().setY(p.y - CONVEYOR.underDrop)).reverse(), [top[0]]);
+  } else if (CONVEYOR.closed && top.length >= 3) {
+    seq = top.concat([top[0]]);
+  }
+  const cp = new THREE.CurvePath();
+  for (let i = 0; i < seq.length - 1; i++)
+    if (seq[i].distanceTo(seq[i + 1]) > 1e-5) cp.add(new THREE.LineCurve3(seq[i], seq[i + 1]));
+  convCurve = cp.curves.length ? cp : null;
+  convLen = convCurve ? convCurve.getLength() : 1;
+}
+rebuildConvCurve();
+
+// one shared geometry set; materials are per carrier (cheap, and leaves room
+// for per-carrier tinting later)
+let cvGeos = null;
+const carriers = [];
+function rebuildCarriers() {
+  for (const c of carriers) scene.remove(c.g);
+  carriers.length = 0;
+  if (cvGeos) for (const g of cvGeos) g.dispose();
+  const S = CONVEYOR.size;
+  cvGeos = [
+    new THREE.BoxGeometry(S, S * 0.09, S),
+    new THREE.CylinderGeometry(S * 0.16, S * 0.16, S * 0.05, 14),
+    new THREE.CylinderGeometry(S * 0.13, S * 0.13, S * 0.22, 16),
+  ];
+  const off = S * 0.24;
+  for (let i = 0; i < CONVEYOR.count; i++) {
+    const g = new THREE.Group();
+    const mats = [
+      new THREE.MeshStandardMaterial({ color: 0xc9ced6, roughness: 0.45, metalness: 0.6 }),
+      new THREE.MeshStandardMaterial({ color: 0x8b929c, roughness: 0.6, metalness: 0.5 }),
+      new THREE.MeshStandardMaterial({ color: 0x2f6df0, roughness: 0.5 }),
+    ];
+    g.add(new THREE.Mesh(cvGeos[0], mats[0]));
+    for (const [sx, sz] of [[-1,-1],[1,-1],[-1,1],[1,1]]) {
+      const r = new THREE.Mesh(cvGeos[1], mats[1]);
+      r.position.set(sx * off, S * 0.07, sz * off);
+      g.add(r);
+    }
+    const wp = new THREE.Mesh(cvGeos[2], mats[2]);
+    wp.position.set(-off, S * 0.15, -off);
+    g.add(wp);
+    scene.add(g);
+    carriers.push({ g, mats });
+  }
+}
+rebuildCarriers();
+// headless-verification hook: only armed with ?dbg=1, never in the study build
+if (new URLSearchParams(location.search).has('dbg'))
+  window.__dbg = { THREE, scene, camera, carriers, convCurve, conveyor: CONVEYOR,
+                   armSplat, ARM_RIG, armYawDeg, venue };
+let convT = 0;
+const CONV_UP = new THREE.Vector3(0, 1, 0);
+const convP = new THREE.Vector3(), convTan = new THREE.Vector3();
+function updateCarriers(dt) {
+  if (!convCurve) { for (const c of carriers) c.g.visible = false; return; }
+  convT = (convT + dt * CONVEYOR.speed / convLen) % 1;
+  carriers.forEach((c, i) => {
+    c.g.visible = true;
+    const u = (convT + i / carriers.length) % 1;
+    convCurve.getPointAt(u, convP);
+    convCurve.getTangentAt(u, convTan);
+    c.g.position.copy(convP);
+    c.g.lookAt(convP.x + convTan.x, convP.y, convP.z + convTan.z);
+    // only a synthesised under-deck return flips the pallet upside down
+    if (CONVEYOR.mirrorUnder && convP.y < CONVEYOR.path[0][1] - CONVEYOR.underDrop * 0.5)
+      c.g.rotateZ(Math.PI);
+  });
+}
+
+// ── in-room conveyor editor (?edit=conveyor) ─────────────────────────────────
+// Authoring the path in the room itself removes the coordinate-transfer step
+// entirely: what you click is literally where the carrier goes. Off by default,
+// so the study build keeps venue raycasting disabled for speed.
+const CV_EDIT = new URLSearchParams(location.search).get('edit') === 'conveyor';
+let cvPicking = false;
+const cvDots = new THREE.Group();
+scene.add(cvDots);
+const cvLineMat = new THREE.LineBasicMaterial({ color: 0x5ab0ff });
+const cvDotGeo = new THREE.SphereGeometry(0.02, 12, 8);
+const cvDotMat = new THREE.MeshBasicMaterial({ color: 0xffc94d });
+const cvDotMatSel = new THREE.MeshBasicMaterial({ color: 0xff5d5d });
+let cvLine = null;
+function cvRefresh() {
+  rebuildConvCurve();
+  if (cvLine) { scene.remove(cvLine); cvLine.geometry.dispose(); cvLine = null; }
+  cvDots.clear();
+  if (!CV_EDIT) return;
+  CONVEYOR.path.forEach((p, i) => {
+    const d = new THREE.Mesh(cvDotGeo, i === 0 ? cvDotMatSel : cvDotMat);
+    d.position.set(p[0], p[1] + CONVEYOR.lift, p[2]);
+    cvDots.add(d);
+  });
+  if (convCurve) {
+    cvLine = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(convCurve.getPoints(300)), cvLineMat);
+    scene.add(cvLine);
+  }
+  const box = document.getElementById('cvOut');
+  if (box) box.textContent = JSON.stringify({
+    frame: 'tutor-room-world', closed: CONVEYOR.closed, mirrorUnder: CONVEYOR.mirrorUnder,
+    underDrop: CONVEYOR.underDrop, carriers: CONVEYOR.count, speed: CONVEYOR.speed,
+    lift: CONVEYOR.lift, size: CONVEYOR.size,
+    path: CONVEYOR.path.map((p) => p.map((v) => +v.toFixed(3))),
+  });
+  const st = document.getElementById('cvLen');
+  if (st) st.textContent = `${CONVEYOR.path.length} pts · ${convLen.toFixed(2)} m · ` +
+    `${(convLen / CONVEYOR.speed).toFixed(1)} s/lap`;
+}
+if (CV_EDIT) {
+  const panel = document.createElement('div');
+  panel.id = 'cvPanel';
+  panel.style.cssText = 'position:fixed;top:10px;right:12px;width:290px;padding:12px 14px;' +
+    'background:rgba(0,0,0,.82);border:1px solid #39404b;border-radius:8px;z-index:12;' +
+    'font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;color:#dde3ea';
+  panel.innerHTML = `
+    <b>conveyor editor</b><div style="color:#8b93a0;margin:4px 0 8px">
+    turn on <i>pick</i>, then click the belt in travel order. Trace the whole loop —
+    out along the deck <i>and</i> back along the return run.</div>
+    <div style="margin-bottom:6px">
+      <button id="cvPick" class="cvb">pick: off</button>
+      <button id="cvUndo" class="cvb">undo</button>
+      <button id="cvClear" class="cvb">clear</button>
+    </div>
+    <div style="margin-bottom:6px">
+      <button id="cvClosed" class="cvb">closed: on</button>
+      <button id="cvMirror" class="cvb">mirror under: off</button>
+    </div>
+    <label>carriers <b id="cvNv">4</b><input id="cvN" type="range" min="1" max="10" step="1" value="4" style="width:100%"></label>
+    <label>speed m/s <b id="cvSv">0.60</b><input id="cvS" type="range" min="0.05" max="1.2" step="0.05" value="0.6" style="width:100%"></label>
+    <label>size mm <b id="cvZv">120</b><input id="cvZ" type="range" min="40" max="260" step="5" value="120" style="width:100%"></label>
+    <label>lift mm <b id="cvLv">10</b><input id="cvL" type="range" min="-80" max="150" step="2" value="10" style="width:100%"></label>
+    <div id="cvLen" style="margin-top:6px;color:#8fd8a8"></div>
+    <button id="cvCopy" class="cvb" style="margin-top:6px">copy JSON</button>
+    <div id="cvOut" style="margin-top:6px;padding:5px;background:#10141a;border:1px solid #333b46;
+      border-radius:4px;font-size:9.5px;white-space:pre-wrap;user-select:all;max-height:110px;overflow:auto"></div>`;
+  document.body.appendChild(panel);
+  const st = document.createElement('style');
+  st.textContent = '.cvb{background:#222831;color:#e8eaed;border:1px solid #39404b;border-radius:5px;' +
+    'padding:4px 8px;cursor:pointer;font:inherit;margin:2px 3px 2px 0}.cvb.on{background:#2f6df0;border-color:#2f6df0}' +
+    '#cvPanel label{display:block;margin:5px 0;color:#aeb6c2}#cvPanel label b{color:#8fd8a8;float:right}';
+  document.head.appendChild(st);
+
+  const $ = (id) => document.getElementById(id);
+  $('cvPick').onclick = function () {
+    cvPicking = !cvPicking;
+    this.classList.toggle('on', cvPicking);
+    this.textContent = 'pick: ' + (cvPicking ? 'ON' : 'off');
+    status(cvPicking ? 'click the belt to add path points' : 'picking off');
+  };
+  $('cvUndo').onclick = () => { CONVEYOR.path.pop(); cvRefresh(); };
+  $('cvClear').onclick = () => { CONVEYOR.path.length = 0; cvRefresh(); };
+  $('cvClosed').onclick = function () {
+    CONVEYOR.closed = !CONVEYOR.closed;
+    this.classList.toggle('on', CONVEYOR.closed);
+    this.textContent = 'closed: ' + (CONVEYOR.closed ? 'on' : 'off');
+    cvRefresh();
+  };
+  $('cvMirror').onclick = function () {
+    CONVEYOR.mirrorUnder = !CONVEYOR.mirrorUnder;
+    this.classList.toggle('on', CONVEYOR.mirrorUnder);
+    this.textContent = 'mirror under: ' + (CONVEYOR.mirrorUnder ? 'ON' : 'off');
+    cvRefresh();
+  };
+  $('cvClosed').classList.toggle('on', CONVEYOR.closed);
+  $('cvClosed').textContent = 'closed: ' + (CONVEYOR.closed ? 'on' : 'off');
+  $('cvN').oninput = function () { CONVEYOR.count = +this.value; $('cvNv').textContent = this.value; rebuildCarriers(); cvRefresh(); };
+  $('cvS').oninput = function () { CONVEYOR.speed = +this.value; $('cvSv').textContent = (+this.value).toFixed(2); cvRefresh(); };
+  $('cvZ').oninput = function () { CONVEYOR.size = +this.value / 1000; $('cvZv').textContent = this.value; rebuildCarriers(); cvRefresh(); };
+  $('cvL').oninput = function () { CONVEYOR.lift = +this.value / 1000; $('cvLv').textContent = this.value; cvRefresh(); };
+  $('cvCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText($('cvOut').textContent); status('conveyor JSON copied'); }
+    catch { status('clipboard blocked — select the JSON and copy manually'); }
+  };
+}
+cvRefresh();
+
+// ── room furniture: student workstations round the edges ─────────────────────
+// The real lab has benches of PCs along the walls (visible in the capture). An
+// empty hall read as a void with machinery floating in it; these give the space
+// a floor plan and a sense of scale. All shared geometry/materials — one desk is
+// 6 meshes, so 8 desks add 48 draw calls, not 48 new buffers.
+function buildWorkstations() {
+  const G = new THREE.Group();
+  const deskTop  = new THREE.BoxGeometry(1.55, 0.045, 0.68);
+  const deskLeg  = new THREE.BoxGeometry(0.06, 0.72, 0.06);
+  const monBody  = new THREE.BoxGeometry(0.52, 0.32, 0.03);
+  const monStand = new THREE.BoxGeometry(0.06, 0.12, 0.06);
+  const monBase  = new THREE.BoxGeometry(0.24, 0.015, 0.16);
+  const towerG   = new THREE.BoxGeometry(0.18, 0.4, 0.42);
+  const kbG      = new THREE.BoxGeometry(0.42, 0.018, 0.15);
+  const chairSeat= new THREE.CylinderGeometry(0.2, 0.2, 0.06, 12);
+  const chairPost= new THREE.CylinderGeometry(0.03, 0.03, 0.32, 8);
+  const chairBack= new THREE.BoxGeometry(0.38, 0.36, 0.05);
+
+  const wood  = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: .75 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0x6e757e, roughness: .5, metalness: .35 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x22262c, roughness: .55 });
+  const screen= new THREE.MeshStandardMaterial({ color: 0x1b3a5c, roughness: .25,
+                                                 emissive: 0x14304d, emissiveIntensity: .55 });
+  const chairM= new THREE.MeshStandardMaterial({ color: 0x2b3038, roughness: .8 });
+
+  function desk() {
+    const d = new THREE.Group();
+    const top = new THREE.Mesh(deskTop, wood); top.position.y = 0.72; d.add(top);
+    for (const [sx, sz] of [[-1,-1],[1,-1],[-1,1],[1,1]]) {
+      const l = new THREE.Mesh(deskLeg, metal);
+      l.position.set(sx * 0.72, 0.36, sz * 0.29); d.add(l);
+    }
+    const m = new THREE.Mesh(monBody, black); m.position.set(0, 1.06, -0.2); d.add(m);
+    const sc = new THREE.Mesh(monBody, screen);
+    sc.position.set(0, 1.06, -0.183); sc.scale.set(0.93, 0.88, 1); d.add(sc);
+    const st = new THREE.Mesh(monStand, black); st.position.set(0, 0.86, -0.2); d.add(st);
+    const bs = new THREE.Mesh(monBase, black);  bs.position.set(0, 0.755, -0.2); d.add(bs);
+    const tw = new THREE.Mesh(towerG, black);   tw.position.set(0.6, 0.2, -0.12); d.add(tw);
+    const kb = new THREE.Mesh(kbG, black);      kb.position.set(0, 0.752, 0.08); d.add(kb);
+    const ch = new THREE.Group();
+    const se = new THREE.Mesh(chairSeat, chairM); se.position.y = 0.45; ch.add(se);
+    const po = new THREE.Mesh(chairPost, metal);  po.position.y = 0.26; ch.add(po);
+    const ba = new THREE.Mesh(chairBack, chairM); ba.position.set(0, 0.66, 0.17); ch.add(ba);
+    ch.position.set(0, 0, 0.72); d.add(ch);
+    return d;
+  }
+  // benches hug three walls; the fourth is left clear for the entrance
+  const EDGE = HALL / 2 - 0.95;
+  const rows = [
+    { n: 3, axis: 'z', at: -EDGE, ry: 0 },        // back wall
+    { n: 3, axis: 'x', at: -EDGE, ry: Math.PI/2 },// left wall
+    { n: 2, axis: 'x', at:  EDGE, ry: -Math.PI/2 },// right wall
+  ];
+  for (const r of rows) {
+    for (let i = 0; i < r.n; i++) {
+      const t = (i - (r.n - 1) / 2) * 2.1;
+      const d = desk();
+      if (r.axis === 'z') d.position.set(t, 0, r.at);
+      else d.position.set(r.at, 0, t);
+      d.rotation.y = r.ry;
+      G.add(d);
+    }
+  }
+  return G;
+}
+// ── the hall around the captured lab: floor, walls, ceiling, light panels ──
+const HALL = 11, WALL_H2 = 3.6;
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(HALL, HALL),
+  new THREE.MeshStandardMaterial({ color: 0x6a707a, roughness: 0.95 })
+);
+floor.rotation.x = -Math.PI/2;
+floor.position.y = -0.012;                 // just under the captured floor, avoids z-fighting
+scene.add(floor);
+const grid = new THREE.GridHelper(HALL, HALL, 0x8790a0, 0x596273);
+grid.position.y = -0.008;
+scene.add(grid);
+
+// safety-yellow border marking the exhibit area, like a real shop floor
+const bandMat = new THREE.MeshStandardMaterial({ color: 0xd9b036, roughness: 0.8 });
+for (const [w, d, x, z] of [[5.2,0.09,0,-2.6],[5.2,0.09,0,2.6],[0.09,5.2,-2.6,0],[0.09,5.2,2.6,0]]) {
+  const b = new THREE.Mesh(new THREE.BoxGeometry(w, 0.012, d), bandMat);
+  b.position.set(x, -0.004, z);
+  scene.add(b);
+}
+
+const wallMat = new THREE.MeshStandardMaterial({ color: 0xa9b0ba, roughness: 1, side: THREE.DoubleSide });
+const dadoMat = new THREE.MeshStandardMaterial({ color: 0x51616f, roughness: 1, side: THREE.DoubleSide });
+for (const [x, z, ry] of [[0,-HALL/2,0],[0,HALL/2,Math.PI],[-HALL/2,0,Math.PI/2],[HALL/2,0,-Math.PI/2]]) {
+  const w = new THREE.Mesh(new THREE.PlaneGeometry(HALL, WALL_H2), wallMat);
+  w.position.set(x, WALL_H2/2, z); w.rotation.y = ry;
+  scene.add(w);
+  const d = new THREE.Mesh(new THREE.PlaneGeometry(HALL, 1.0), dadoMat);  // painted lower band
+  d.position.set(x, 0.5, z); d.rotation.y = ry;
+  d.position.x += Math.sin(ry) * 0.01; d.position.z += Math.cos(ry) * 0.01;
+  scene.add(d);
+}
+
+const ceiling = new THREE.Mesh(
+  new THREE.PlaneGeometry(HALL, HALL),
+  new THREE.MeshStandardMaterial({ color: 0xc6ccd4, roughness: 1, side: THREE.DoubleSide })
+);
+ceiling.rotation.x = Math.PI/2;
+ceiling.position.y = WALL_H2;
+scene.add(ceiling);
+
+// ── entrance door ────────────────────────────────────────────────────────────
+// Modelled on the real door of room 7e.230: a single light-wood leaf in a pale
+// frame, with the laboratory passport and safety-sign sheets taped on, the brass
+// room plate beside it and a "Keep door closed" notice. Recognising your own
+// door is what makes the arrival feel like this specific lab rather than a
+// generic 3D room.
+const DOOR_W = 1.05, DOOR_H = 2.35, DOOR_Z = HALL / 2;
+const doorGroup = new THREE.Group();
+{
+  // --- the leaf texture: wood grain + the paperwork that is actually on it ---
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 1140;
+  const g = c.getContext('2d');
+  g.fillStyle = '#c9a87c'; g.fillRect(0, 0, 512, 1140);
+  for (let i = 0; i < 260; i++) {            // vertical grain
+    g.strokeStyle = `rgba(${150 + Math.random() * 40 | 0},${115 + Math.random() * 35 | 0},70,${0.05 + Math.random() * 0.13})`;
+    g.lineWidth = 1 + Math.random() * 3;
+    const x = Math.random() * 512;
+    g.beginPath(); g.moveTo(x, 0);
+    g.bezierCurveTo(x + 8, 380, x - 8, 760, x + 4, 1140);
+    g.stroke();
+  }
+  const sheet = (x, y, w, h, title, rows, accent) => {
+    g.fillStyle = '#fff'; g.fillRect(x, y, w, h);
+    g.strokeStyle = '#b9b3a5'; g.lineWidth = 1.5; g.strokeRect(x, y, w, h);
+    g.fillStyle = accent || '#2b3a6b';
+    g.font = 'bold 11px sans-serif'; g.textAlign = 'center';
+    g.fillText(title, x + w / 2, y + 15);
+    g.strokeStyle = '#d6d2c8'; g.lineWidth = 1;
+    for (let r = 0; r < rows; r++) {
+      const yy = y + 24 + r * ((h - 30) / rows);
+      g.beginPath(); g.moveTo(x + 5, yy); g.lineTo(x + w - 5, yy); g.stroke();
+    }
+  };
+  sheet(96, 300, 300, 190, 'LABORATORY PASSPORT · 7e.230', 9);
+  sheet(96, 512, 300, 168, 'KNOW YOUR SAFETY SIGNS', 6, '#8a2b2b');
+  // little hazard pictograms on the safety sheet
+  for (let i = 0; i < 5; i++) {
+    const px = 128 + i * 56, py = 600;
+    g.fillStyle = '#f5c518';
+    g.beginPath(); g.moveTo(px, py - 13); g.lineTo(px + 14, py + 11); g.lineTo(px - 14, py + 11);
+    g.closePath(); g.fill();
+    g.strokeStyle = '#222'; g.lineWidth = 2; g.stroke();
+    g.fillStyle = '#222'; g.font = 'bold 13px sans-serif'; g.textAlign = 'center';
+    g.fillText('!', px, py + 8);
+  }
+  // NOTICE — keep door closed
+  g.fillStyle = '#fff'; g.fillRect(300, 700, 108, 60);
+  g.strokeStyle = '#26456e'; g.lineWidth = 2; g.strokeRect(300, 700, 108, 60);
+  g.fillStyle = '#26456e'; g.fillRect(300, 700, 108, 17);
+  g.fillStyle = '#fff'; g.font = 'bold 12px sans-serif'; g.textAlign = 'center';
+  g.fillText('NOTICE', 354, 713);
+  g.fillStyle = '#111'; g.font = 'bold 13px sans-serif';
+  g.fillText('Keep', 354, 733); g.fillText('door closed', 354, 750);
+  // NOTICE — security camera
+  g.fillStyle = '#fff'; g.fillRect(330, 190, 100, 62);
+  g.strokeStyle = '#9b2b2b'; g.lineWidth = 2; g.strokeRect(330, 190, 100, 62);
+  g.fillStyle = '#9b2b2b'; g.fillRect(330, 190, 100, 16);
+  g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif';
+  g.fillText('NOTICE', 380, 202);
+  g.fillStyle = '#111'; g.font = 'bold 9px sans-serif';
+  g.fillText('SECURITY CAMERA', 380, 232); g.fillText('IN USE', 380, 244);
+  const doorTex = new THREE.CanvasTexture(c);
+  doorTex.colorSpace = THREE.SRGBColorSpace;
+
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0xd8d5cd, roughness: .7 });
+  const leafMat  = new THREE.MeshStandardMaterial({ map: doorTex, roughness: .62 });
+
+  // frame
+  const jamb = new THREE.BoxGeometry(0.075, DOOR_H + 0.1, 0.17);
+  for (const sx of [-1, 1]) {
+    const j = new THREE.Mesh(jamb, frameMat);
+    j.position.set(sx * (DOOR_W / 2 + 0.038), (DOOR_H + 0.1) / 2, DOOR_Z);
+    doorGroup.add(j);
+  }
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W + 0.15, 0.085, 0.17), frameMat);
+  lintel.position.set(0, DOOR_H + 0.09, DOOR_Z);
+  doorGroup.add(lintel);
+
+  // single leaf, hinged on the left like the real one
+  const hinge = new THREE.Group();
+  hinge.position.set(-DOOR_W / 2, 0, DOOR_Z);
+  const leaf = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W, DOOR_H, 0.045), leafMat);
+  leaf.position.set(DOOR_W / 2, DOOR_H / 2, 0);
+  hinge.add(leaf);
+  // handle + card reader
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.16, 0.03),
+    new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: .35, metalness: .75 }));
+  handle.position.set(DOOR_W - 0.11, 1.02, 0.045);
+  hinge.add(handle);
+  const reader = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.19, 0.02),
+    new THREE.MeshStandardMaterial({ color: 0x2a2d33, roughness: .5 }));
+  reader.position.set(DOOR_W - 0.11, 1.26, 0.04);
+  hinge.add(reader);
+  doorGroup.add(hinge);
+
+  // brass room plate on the wall beside the door
+  const pc = document.createElement('canvas');
+  pc.width = 320; pc.height = 190;
+  const pg = pc.getContext('2d');
+  pg.fillStyle = '#f4f1e8'; pg.fillRect(0, 0, 320, 190);
+  pg.strokeStyle = '#b08d4f'; pg.lineWidth = 7; pg.strokeRect(5, 5, 310, 180);
+  pg.fillStyle = '#1f3564'; pg.textAlign = 'center';
+  pg.font = 'bold 46px Georgia, serif'; pg.fillText('7e.230', 160, 66);
+  pg.font = '20px Georgia, serif'; pg.fillStyle = '#333';
+  pg.fillText('Intelligent', 160, 108);
+  pg.fillText('Manufacturing', 160, 134);
+  pg.fillText('Laboratory', 160, 160);
+  const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.38, 0.225),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(pc) }));
+  plate.position.set(DOOR_W / 2 + 0.42, 1.62, DOOR_Z + 0.005);
+  doorGroup.add(plate);
+
+  scene.add(doorGroup);
+  window.__door = { leaves: [{ hinge, dir: -1 }], open: 0 };
+}
+const workstations = buildWorkstations();   // needs HALL, so built after it
+scene.add(workstations);
+
+// recessed light panels + matching soft lights
+const panelMat = new THREE.MeshBasicMaterial({ color: 0xaeb9c9 });
+for (const [px, pz] of [[-2.6,-2.6],[2.6,-2.6],[-2.6,2.6],[2.6,2.6],[0,0]]) {
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.5), panelMat);
+  panel.rotation.x = Math.PI/2;
+  panel.position.set(px, WALL_H2 - 0.02, pz);
+  scene.add(panel);   // emissive-looking panels are unlit geometry: free
+}
+// soft room fill: lower and gentler than before so the ceiling no longer blooms.
+// Four dimmer lights sit well below the panels for even coverage without a hotspot.
+for (const [px, pz] of [[-2.6, -2.6], [2.6, 2.6], [2.6, -2.6], [-2.6, 2.6]]) {
+  const pl = new THREE.PointLight(0xeaf2ff, 5.5, 14, 2);
+  pl.position.set(px, WALL_H2 - 1.1, pz);
+  scene.add(pl);
+}
+
+// ── info points on the captured lab equipment ────────────────────────────
+// Draft positions — drag them onto the real features with "move info points",
+// then hit 📋 layout and send me the JSON to bake them in permanently.
+const HOTSPOTS = [
+  { id: 'distributing', pos: [-1.593, 0.758, -0.386], title: 'Distributing station',
+    text: 'The station that feeds raw workpieces into the line. Parts are stacked in a magazine, a pneumatic pusher separates them one at a time, and a transfer arm hands each one to the next station.',
+    step: 1, stepTitle: 'Distributing station' },
+  { id: 'carriers', pos: [-0.647, 0.903, -1.036], title: 'Workpiece carriers',
+    text: 'The pallets that carry parts around the line. Each workpiece rides on a carrier so every station can grip it the same way, and the carriers circulate continuously. That is what lets separate stations work together as one production line.',
+    step: 2, stepTitle: 'Workpiece carriers' },
+  { id: 'handling1', pos: [-0.839, 0.909, 0.827], title: 'First handling station',
+    text: 'A pick-and-place handler. A pneumatic gripper on a two-axis slide lifts a workpiece, moves it across, and sets it down at the next position. It is the basic transfer operation in almost every automated line.',
+    step: 3, stepTitle: 'First handling station' },
+  { id: 'handling2', pos: [-0.079, 0.727, -1.264], title: 'Second handling station',
+    text: 'A second handling unit further along the line. Repeating the same station type is deliberate in a teaching line. It lets a class run several groups in parallel and compare how each one is programmed.',
+    step: 4, stepTitle: 'Second handling station' },
+  { id: 'arm', pos: [1.052, 1.302, 0.517], title: 'Robot arm',
+    text: 'The articulated robot that serves the assembly station. Blue tubing along the arm carries compressed air to the gripper, and the black cable chain guides the wiring so the arm can move without snagging.',
+    step: 5, stepTitle: 'Robot arm' },
+  { id: 'assembly', pos: [1.269, 0.777, 0.607], title: 'Robot assembly station',
+    text: 'Where parts are joined together rather than just moved. The robot places components into a fixture and assembles them into a finished workpiece.',
+    step: 6, stepTitle: 'Robot assembly station' },
+  { id: 'asrs', pos: [0.706, 0.770, -0.354], title: 'Automated storage (ASRS)',
+    text: 'An automated storage and retrieval unit. A rack of slots holds workpieces, and a shuttle puts them away and fetches them back on demand, like a miniature warehouse stacker crane.',
+    step: 7, stepTitle: 'Automated storage (ASRS)' },
+  { id: 'controller', pos: [0.92, 0.515, 1.495], title: 'Controller / PLC cabinet',
+    text: 'The control hardware for a station. A programmable logic controller reads the sensors and drives the valves and actuators. Students program it to change what the station does, which is the software side of the mechatronics course.',
+    step: 8, stepTitle: 'Controller / PLC cabinet' },
+  { id: 'air', pos: [0.230, 0.398, 0.697], title: 'Compressed-air supply',
+    text: 'Pneumatics power almost everything here. The grippers, pushers, and slides all run on compressed air, distributed through the blue tubing that threads between the stations.',
+    step: 9, stepTitle: 'Compressed-air supply' },
+];
+const hsGroup = new THREE.Group();
+scene.add(hsGroup);
+const hsGeo = new THREE.SphereGeometry(0.028, 14, 10);
+const hsMat = new THREE.MeshBasicMaterial({ color: 0x2f9bf0 });
+const hsMatOn = new THREE.MeshBasicMaterial({ color: 0xffc94d });
+const hsRing = new THREE.RingGeometry(0.04, 0.05, 18);
+// each station carries its step number, so the order to walk them is visible in
+// the room itself rather than something the visitor has to guess
+function numberSprite(n) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 96;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(48, 48, 44, 0, Math.PI * 2);
+  g.fillStyle = '#2f6df0'; g.fill();
+  g.lineWidth = 6; g.strokeStyle = '#eaf3ff'; g.stroke();
+  g.fillStyle = '#fff'; g.font = 'bold 58px ui-monospace, Menlo, monospace';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(String(n), 48, 53);
+  const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = 4;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  sp.scale.setScalar(0.13);
+  sp.position.y = 0.10;
+  return sp;
+}
+const hotspots = HOTSPOTS.map((h) => {
+  const m = new THREE.Mesh(hsGeo, hsMat);
+  m.position.set(...h.pos);
+  const halo = new THREE.Mesh(hsRing, new THREE.MeshBasicMaterial({
+    color: 0xa8d8ff, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthTest: false }));
+  m.add(halo);
+  const num = numberSprite(h.step);
+  m.add(num);
+  hsGroup.add(m);
+  return { ...h, mesh: m, halo, num };
+});
+
+// dotted route through the stations in order — shows the path a part takes
+{
+  const pts = HOTSPOTS.map((h) => new THREE.Vector3(h.pos[0], h.pos[1] + 0.02, h.pos[2]));
+  const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.06);
+  const g = new THREE.BufferGeometry().setFromPoints(curve.getPoints(400));
+  const line = new THREE.Line(g, new THREE.LineDashedMaterial({
+    color: 0x2f6df0, dashSize: 0.06, gapSize: 0.05, transparent: true,
+    opacity: 0.55, depthTest: false }));
+  line.computeLineDistances();
+  line.renderOrder = 2;
+  scene.add(line);
+  window.__route = line;
+}
+
+// ── exhibit factory: pedestal mesh + robot splat + pick proxy + ⓘ marker ──
+const PED_H = 0.9, PED_W = 0.48;
+const exhibits = [];
+const pedGeo = new THREE.BoxGeometry(PED_W, PED_H, PED_W);
+const pedMat = new THREE.MeshStandardMaterial({ color: 0xb9bec7, roughness: 0.6 });
+const markerGeo = new THREE.SphereGeometry(0.055, 16, 12);
+const markerMat = new THREE.MeshBasicMaterial({ color: 0x2f6df0 });
+
+// native → viewer: rotation -π/2 about X maps (x,y,z)_ply → (x, z, -y)_world
+const c = { x: (CROP.min[0]+CROP.max[0])/2, zTop: CROP.max[2], zBot: CROP.min[2],
+            zMid: -(CROP.min[1]+CROP.max[1])/2 };
+
+// hover highlight ring shared geometry/material
+const ringGeo = new THREE.RingGeometry(0.36, 0.46, 40);
+const ringMat = () => new THREE.MeshBasicMaterial({ color: 0x5ab0ff, transparent: true,
+  opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+
+function finishExhibit(g, splat, objH, e) {
+  const proxy = new THREE.Mesh(
+    new THREE.BoxGeometry(PED_W + 0.04, PED_H + objH + 0.1, PED_W + 0.04),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  proxy.position.y = (PED_H + objH)/2;
+  g.add(proxy);
+  const marker = new THREE.Mesh(markerGeo, markerMat);
+  marker.position.set(0.2, PED_H + objH * 0.68, 0);
+  g.add(marker);
+  const ring = new THREE.Mesh(ringGeo, ringMat());
+  ring.rotation.x = -Math.PI/2;
+  ring.position.y = 0.012;
+  g.add(ring);
+  e.proxy = proxy; e.marker = marker; e.ring = ring; e.objH = objH;
+  exhibits.push(e);
+}
+
+// fixed placement (measured constants) — the robot
+function makeRobotExhibit(pos) {
+  const g = new THREE.Group();
+  g.position.copy(pos);
+  const ped = new THREE.Mesh(pedGeo, pedMat);
+  ped.position.y = PED_H/2;
+  g.add(ped);
+  const splat = new SplatMesh({ url: ROBOT_URL, onProgress: (p) => status(`loading robot… ${Math.round(p*100)}%`) });
+  splat.rotation.set(-Math.PI/2, 0, 0);
+  splat.position.set(-c.x, PED_H - CROP.min[2], -c.zMid);
+  g.add(splat);
+  scene.add(g);
+  const e = { id: 'robot', group: g, splat };
+  finishExhibit(g, splat, CROP.max[2] - CROP.min[2], e);
+  return e;
+}
+
+// auto placement: measure the splat's bbox at runtime, seat it on the pedestal
+function makeAutoExhibit(id, url, pos, rotX, scale) {
+  const g = new THREE.Group();
+  g.position.copy(pos);
+  const ped = new THREE.Mesh(pedGeo, pedMat);
+  ped.position.y = PED_H/2;
+  g.add(ped);
+  const splat = new SplatMesh({ url });
+  splat.rotation.x = rotX;
+  splat.scale.setScalar(scale);
+  g.add(splat);
+  scene.add(g);
+  const e = { id, group: g, splat };
+  splat.initialized.then(() => {
+    splat.updateMatrix();
+    const b = splat.getBoundingBox().clone().applyMatrix4(splat.matrix);
+    const bc = b.getCenter(new THREE.Vector3());
+    splat.position.set(-bc.x, PED_H - b.min.y, -bc.z);
+    finishExhibit(g, splat, b.max.y - b.min.y, e);
+  });
+  return e;
+}
+
+// textured-mesh exhibit (GLB): normalized to targetH and seated on the pedestal
+function makeGlbExhibit(id, url, pos, targetH = 0.52) {
+  const g = new THREE.Group();
+  g.position.copy(pos);
+  const ped = new THREE.Mesh(pedGeo, pedMat);
+  ped.position.y = PED_H/2;
+  g.add(ped);
+  scene.add(g);
+  const e = { id, group: g };
+  new GLTFLoader().load(url, (gltf) => {
+    const obj = gltf.scene;
+    let b = new THREE.Box3().setFromObject(obj);
+    const size = b.getSize(new THREE.Vector3());
+    obj.scale.setScalar(targetH / (size.y || 1));
+    b = new THREE.Box3().setFromObject(obj);
+    const bc = b.getCenter(new THREE.Vector3());
+    obj.position.set(-bc.x, PED_H - b.min.y, -bc.z);
+    g.add(obj);
+    e.mesh = obj;
+    finishExhibit(g, obj, targetH, e);
+  }, undefined, (err) => console.warn('glb exhibit load failed', err));
+  return e;
+}
+
+// exhibit positions fitted to the ~4.4 x 4.6 m lab zone
+// const first = makeRobotExhibit(new THREE.Vector3(0.53, 0, 1.57));  // exhibit removed on request
+status('preparing the lab…');
+
+// ── controls: orbit / walk (ali-demo style, flat floor) ──
+const orbit = new OrbitControls(camera, dom);
+orbit.enableDamping = true; orbit.dampingFactor = 0.08;
+orbit.target.set(0.0, 0.8, 0.2);
+orbit.maxPolarAngle = Math.PI * 0.55;
+orbit.minDistance = 0.6; orbit.maxDistance = 10;
+
+let mode = 'walk';   // walking is the default way to see the room
+const EYE = 1.6, SPEED = 1.6, SPEED_FAST = 4.0, SENS = 0.0026;
+let yaw = 0, pitch = 0, dragging = false, lastX = 0, lastY = 0;
+const keys = Object.create(null);
+const typing = () => document.activeElement && document.activeElement.tagName === 'INPUT';
+addEventListener('keydown', (e) => {
+  if (typing()) return; // don't move while typing a question
+  keys[e.code] = true;
+  if (e.code === 'Digit1') setGizmoMode('translate');
+  if (e.code === 'Digit2') setGizmoMode('rotate');
+  if (e.code === 'Digit3') setGizmoMode('scale');
+  if (e.code === 'KeyQ') openAsk();
+});
+addEventListener('keyup', (e) => keys[e.code] = false);
+// shooter-style mouse look in walk mode: click the canvas once to lock the pointer,
+// then the mouse steers the view directly (Esc releases the lock)
+const locked = () => document.pointerLockElement === dom;
+dom.addEventListener('mousedown', (e) => {
+  if (mode !== 'walk' || e.button !== 0 || gizmoBusy || TOUCH) return;
+  if (!locked()) { dom.requestPointerLock(); return; }
+});
+addEventListener('mousemove', (e) => {
+  let mx = 0, my = 0;
+  if (locked() && mode === 'walk' && !inspecting) { mx = e.movementX; my = e.movementY; }
+  else if (dragging) { mx = e.clientX - lastX; my = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; }
+  else { hoverX = e.clientX; hoverY = e.clientY; return; }
+  yaw   -= mx * SENS;
+  pitch -= my * SENS;
+  pitch = Math.max(-1.45, Math.min(1.45, pitch));
+});
+addEventListener('mouseup', () => dragging = false);
+// ── touch: joystick (walk) + one-finger drag on the canvas (look) ──
+const TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+if (TOUCH) {
+  document.body.classList.add('touch');
+  document.getElementById('howDesk').style.display = 'none';
+  document.getElementById('howTouch').style.display = '';
+  document.getElementById('askBtn').textContent = '💬 ask the tutor';
+  document.getElementById('insAsk').textContent = '💬 ask';
+}
+const joy = { x: 0, y: 0, id: null };
+{
+  const pad = document.getElementById('joy'), knob = document.getElementById('joyKnob');
+  const R = 46;
+  const setKnob = (dx, dy) => { knob.style.transform = `translate(${dx}px, ${dy}px)`; };
+  const moveJoy = (e) => {
+    const r = pad.getBoundingClientRect();
+    let dx = e.clientX - (r.left + r.width/2), dy = e.clientY - (r.top + r.height/2);
+    const d = Math.hypot(dx, dy); if (d > R) { dx *= R/d; dy *= R/d; }
+    setKnob(dx, dy); joy.x = dx / R; joy.y = dy / R;
+  };
+  pad.addEventListener('pointerdown', (e) => { joy.id = e.pointerId; pad.setPointerCapture(e.pointerId); moveJoy(e); e.preventDefault(); });
+  pad.addEventListener('pointermove', (e) => { if (e.pointerId === joy.id) moveJoy(e); });
+  const endJoy = (e) => { if (e.pointerId !== joy.id) return; joy.id = null; joy.x = joy.y = 0; setKnob(0, 0); };
+  pad.addEventListener('pointerup', endJoy); pad.addEventListener('pointercancel', endJoy);
+}
+const look = { id: null, x: 0, y: 0 };
+const TOUCH_SENS = 0.0055;
+dom.addEventListener('pointerdown', (e) => {
+  if (e.pointerType !== 'touch' || mode !== 'walk' || inspecting || look.id !== null) return;
+  look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
+});
+dom.addEventListener('pointermove', (e) => {
+  if (e.pointerId !== look.id) return;
+  yaw   -= (e.clientX - look.x) * TOUCH_SENS;
+  pitch -= (e.clientY - look.y) * TOUCH_SENS;
+  pitch = Math.max(-1.45, Math.min(1.45, pitch));
+  look.x = e.clientX; look.y = e.clientY;
+});
+const endLook = (e) => { if (e.pointerId === look.id) look.id = null; };
+dom.addEventListener('pointerup', endLook); dom.addEventListener('pointercancel', endLook);
+let hoverX = innerWidth/2, hoverY = innerHeight/2;
+
+const bOrbit = document.getElementById('mOrbit'), bWalk = document.getElementById('mWalk');
+const hint = document.getElementById('hint');
+const setMode = (m) => {
+  mode = m; orbit.enabled = (m === 'orbit');
+  bOrbit.classList.toggle('on', m === 'orbit');
+  bWalk.classList.toggle('on', m === 'walk');
+  if (m === 'walk') {
+    const d = camera.getWorldDirection(new THREE.Vector3());
+    yaw = Math.atan2(d.x, d.z); pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
+    camera.position.y = EYE;
+    hint.innerHTML = TOUCH ? '<b>joystick</b> to walk, <b>drag</b> to look, <b>tap</b> a blue info point'
+      : '<kbd>W A S D</kbd> walk · click to lock mouse-look (<kbd>Esc</kbd> releases) · <kbd>shift</kbd> run · <kbd>E</kbd> inspect an info point · <kbd>Q</kbd> ask';
+  } else {
+    if (document.pointerLockElement) document.exitPointerLock();
+    orbit.target.set(camera.position.x, 1.1, camera.position.z).addScaledVector(
+      camera.getWorldDirection(new THREE.Vector3()), 1.5);
+    hint.innerHTML = '<kbd>drag</kbd> orbit · <kbd>scroll</kbd> zoom · click a blue <b>info point</b> · <kbd>Q</kbd> ask the tutor';
+  }
+};
+bOrbit.onclick = () => setMode('orbit');
+bWalk.onclick = () => setMode('walk');
+
+// ── selection + gizmo (ali-demo logic: click to select, gizmo edits) ──
+const gizmo = new TransformControls(camera, dom);
+let gizmoBusy = false;
+gizmo.addEventListener('dragging-changed', (e) => { gizmoBusy = e.value; orbit.enabled = !e.value && mode === 'orbit'; });
+scene.add(gizmo.getHelper ? gizmo.getHelper() : gizmo);
+
+const bMove = document.getElementById('gMove'), bRot = document.getElementById('gRot'), bScale = document.getElementById('gScale');
+function setGizmoMode(m) {
+  gizmo.setMode(m);
+  bMove.classList.toggle('on', m === 'translate');
+  bRot.classList.toggle('on', m === 'rotate');
+  bScale.classList.toggle('on', m === 'scale');
+}
+bMove.onclick = () => setGizmoMode('translate');
+bRot.onclick = () => setGizmoMode('rotate');
+bScale.onclick = () => setGizmoMode('scale');
+
+let selected = null;
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let downAt = null;
+dom.addEventListener('pointerdown', (e) => downAt = [e.clientX, e.clientY]);
+let skipNextClick = false;
+document.addEventListener('pointerlockchange', () => { if (locked()) skipNextClick = true; });
+dom.addEventListener('pointerup', (e) => {
+  if (!downAt || gizmoBusy) return;
+  const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]);
+  downAt = null;
+  if (skipNextClick) { skipNextClick = false; return; } // the click that acquired pointer lock
+  if (moved > 5) return; // was a drag, not a click
+  if (locked()) ptr.set(0, 0); // shooter mode: interact with what's at the crosshair
+  else ptr.set((e.clientX/innerWidth)*2 - 1, -(e.clientY/innerHeight)*2 + 1);
+  ray.setFromCamera(ptr, camera);
+  // conveyor picking owns the click while it is armed
+  if (cvPicking) {
+    const vHit = ray.intersectObject(venue, true)[0];
+    if (!vHit) { status('no surface there — aim at the belt'); return; }
+    CONVEYOR.path.push([vHit.point.x, vHit.point.y - CONVEYOR.lift, vHit.point.z]);
+    cvRefresh();
+    status(`${CONVEYOR.path.length} point(s)`);
+    return;
+  }
+  // info points on the lab equipment take priority
+  const hsHit = ray.intersectObjects(hotspots.map((h) => h.mesh), false)[0];
+  if (hsHit) {
+    const h = hotspots.find((x) => x.mesh === hsHit.object);
+    if (hsEditing) { hsSelected = h; gizmo.attach(h.mesh); status(`moving "${h.title}"`); }
+    else enterInspectHotspot(h);
+    return;
+  }
+  const markers = exhibits.map((x) => x.marker);
+  const mHit = ray.intersectObjects(markers, false)[0];
+  if (mHit) { openInfo(); return; }
+  const proxies = exhibits.map((x) => x.proxy);
+  const hit = ray.intersectObjects(proxies, false)[0];
+  if (hit) {
+    const ex = exhibits.find((x) => x.proxy === hit.object);
+    const d = Math.hypot(camera.position.x - ex.group.position.x, camera.position.z - ex.group.position.z);
+    if (!inspecting && d < NEAR_DIST) {
+      enterInspect(ex); // close by → transition into the field-guide view
+    } else if (!inspecting) {
+      selected = ex;
+      gizmo.attach(selected.group);
+      status('exhibit selected · gizmo: 1 move · 2 rotate · 3 scale');
+    }
+  } else if (!gizmoBusy && !inspecting) {
+    selected = null; gizmo.detach(); status('deselected');
+  }
+});
+
+// ── camera fly (used by inspect mode) ──
+let fly = null;
+function flyTo(camPos, lookAt, onDone) {
+  fly = { p0: camera.position.clone(), p1: camPos, t0: orbit.target.clone(), t1: lookAt, k: 0, onDone };
+}
+
+// ── inspect mode: walk close → prompt → fly-in + field-guide panel (Pollinator-Lab style) ──
+const OBJ_CENTER_Y = PED_H + (CROP.max[2] - CROP.min[2]) / 2;
+const NEAR_DIST = 1.6; // must be close enough that the target is obvious
+const inspectEl = document.getElementById('inspect');
+const inspectPrompt = document.getElementById('inspectPrompt');
+let inspecting = false, savedView = null, nearest = null;
+
+// exhibit content registry — robot comes from the shared study module
+const CONTENT = {
+  robot: Object.assign({}, EXHIBIT, {
+    meta: '50,275 gaussian splats · 1.2 MB (.spz) · captured from an 86 s phone video' }),
+  plushie: {
+    family: 'SOFT TOY',
+    title: 'Reversible Octopus Plushie',
+    subtitle: 'Mood-flip plush toy',
+    tags: ['Textile', 'Reversible', 'Hand-sized', '3DGS capture'],
+    sections: [
+      { icon: '🔍', head: 'What you are looking at',
+        text: 'A pink plush octopus with splayed tentacles, embroidered eyes and a stitched smile, ' +
+              'resting flat on its tentacle skirt.' },
+      { icon: '🔄', head: 'The trick',
+        text: 'It is reversible: flip it inside-out and it turns blue with a grumpy face — a ' +
+              '"mood octopus". The blue fabric is hiding on the underside you can see from below.' },
+      { icon: '📷', head: 'How it was digitized',
+        text: 'Captured as 3D gaussian splats (about 262 thousand of them). Fuzzy fabric like ' +
+              'this is notoriously hard for classic photogrammetry meshes — splats handle soft ' +
+              'edges and fuzz much more gracefully.' },
+      { icon: '🌱', head: 'Why it matters',
+        text: 'A test object for the digitization pipeline: if soft, fuzzy, low-texture things ' +
+              'survive the capture, museum textiles and organic artifacts will too.' },
+    ],
+    closeups: [],
+    meta: '262,144 gaussian splats · 3.2 MB (.spz) · soft-fabric capture test',
+  },
+  tripo: {
+    family: 'AI-GENERATED MESH',
+    title: 'Spine Robot — Generated Twin',
+    subtitle: 'Image-to-3D mesh of the same robot (Tripo)',
+    tags: ['Tripo', 'Textured mesh', 'Relightable', 'Comparison'],
+    sections: [
+      { icon: '🔍', head: 'What you are looking at',
+        text: 'The same articulated spine robot as the splat exhibit — but this one is a ' +
+              'solid textured mesh generated by Tripo, a commercial image-to-3D service, ' +
+              'from photographs.' },
+      { icon: '⚖️', head: 'Mesh vs splats',
+        text: 'A mesh has real surfaces: it reacts to the room lights, casts coherent ' +
+              'silhouettes and stays crisp at any distance. Gaussian splats capture the real ' +
+              'appearance with baked lighting — photoreal up close, fuzzier at edges. ' +
+              'Walk between the two exhibits and compare.' },
+      { icon: '📷', head: 'How it was made',
+        text: 'Photos of the robot went into Tripo, which generated 1.87 million triangles ' +
+              'with textures; we simplified it to about a third of that and recompressed ' +
+              'textures to WebP for the web (59 MB → 20 MB).' },
+      { icon: '🌱', head: 'Why it matters',
+        text: 'Two digitization routes to the same object: measurement-based capture (splats) ' +
+              'versus generative reconstruction (AI mesh). Which one helps students observe ' +
+              'and reason better is exactly the kind of question our study can ask.' },
+    ],
+    closeups: [],
+    meta: '~650K triangles (from 1.87M) · 20.5 MB GLB · Tripo image-to-3D · WebP textures',
+  },
+};
+let curInspectId = 'lab';   // the venue IS the lab; retired object exhibits are gone
+function populatePanel(id) {
+  const E = CONTENT[id] || CONTENT.robot;
+  const clean = (t) => t.replace(' [confirm]', '');
+  document.getElementById('insFamily').textContent = E.family;
+  document.getElementById('insTitle').textContent = E.title;
+  document.getElementById('insSub').textContent = clean(E.subtitle);
+  document.getElementById('insTags').innerHTML =
+    E.tags.map((t) => `<span class="tag">${t}</span>`).join('');
+  document.getElementById('insSections').innerHTML =
+    E.sections.map((s) => `<div class="sec"><b>${s.icon} ${s.head}</b><p>${clean(s.text)}</p></div>`).join('') +
+    (E.closeups.length ? `<div class="sec"><b>📌 Close-up details</b>` +
+      E.closeups.map((c, i) => `<p class="cu" id="insCu-${i}"><b>${i+1} · ${c.head}</b> — ${clean(c.text)}</p>`).join('') + `</div>` : '');
+}
+document.getElementById('insNarrate').onclick = () => {
+  if (curHotspot) { showSubtitle(null, curHotspot.text, true, TTS_CLIP[curHotspot.id]); return; }
+  const E = CONTENT[curInspectId] || CONTENT.robot;
+  const t = E.sections.slice(0, 2).map((s) => s.text.replace(' [confirm]', '')).join(' ');
+  showSubtitle(null, t, true);
+};
+document.getElementById('insAsk').onclick = () => openAsk();
+
+// inspect extras: 3D hotspot pins, legend, size ruler, auto-rotate
+const pins3 = document.getElementById('pins3');
+const insTools = document.getElementById('insTools');
+let insPins = [], inspectedEx = null, rulerGroup = null;
+const objCenterY = (e) => PED_H + (e.objH || 0.5) / 2;
+
+function flyToCloseup(e, cu, i) {
+  const cy = objCenterY(e);
+  flyTo(new THREE.Vector3(cu.cam[0], cu.cam[1] + cy, cu.cam[2]).add(e.group.position),
+        new THREE.Vector3(cu.pin[0], cu.pin[1] + cy, cu.pin[2]).add(e.group.position));
+  document.querySelectorAll('#insSections .cu').forEach((x) => x.classList.remove('hl'));
+  const card = document.getElementById(`insCu-${i}`);
+  if (card) { card.classList.add('hl'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+function buildInspectExtras(e) {
+  const E = CONTENT[e.id] || CONTENT.robot;
+  document.getElementById('insMeta').textContent = E.meta || '';
+  pins3.innerHTML = ''; insPins = [];
+  const cy = objCenterY(e);
+  E.closeups.forEach((cu, i) => {
+    const el = document.createElement('div');
+    el.className = 'pin3'; el.textContent = i + 1; el.title = cu.head;
+    el.onclick = () => flyToCloseup(e, cu, i);
+    pins3.appendChild(el);
+    insPins.push({ el, world: new THREE.Vector3(cu.pin[0], cu.pin[1] + cy, cu.pin[2]).add(e.group.position) });
+  });
+  const lg = document.getElementById('insLegend');
+  lg.innerHTML = E.closeups.map((cu, i) =>
+    `<div data-i="${i}"><span class="n">${i+1}</span>${cu.head}</div>`).join('');
+  lg.querySelectorAll('div[data-i]').forEach((d) =>
+    d.onclick = () => flyToCloseup(e, E.closeups[+d.dataset.i], +d.dataset.i));
+  document.getElementById('insSize').style.display = E.realHeightM ? 'block' : 'none';
+  insTools.style.display = 'block';
+}
+function clearInspectExtras() {
+  pins3.innerHTML = ''; insPins = [];
+  insTools.style.display = 'none';
+  if (rulerGroup) { rulerGroup.parent?.remove(rulerGroup); rulerGroup = null; }
+  document.getElementById('insSize').classList.remove('on');
+  document.getElementById('insSpin').classList.remove('on');
+  orbit.autoRotate = false;
+}
+document.getElementById('insSpin').onclick = function () {
+  orbit.autoRotate = !orbit.autoRotate;
+  orbit.autoRotateSpeed = 1.2;
+  this.classList.toggle('on', orbit.autoRotate);
+};
+document.getElementById('insSize').onclick = function () {
+  const e = inspectedEx; if (!e) return;
+  const E = CONTENT[e.id] || CONTENT.robot;
+  if (rulerGroup) { rulerGroup.parent?.remove(rulerGroup); rulerGroup = null; this.classList.remove('on'); return; }
+  const unit2m = E.realHeightM / e.objH;
+  const tick = 0.1 / unit2m; // 10 cm in world units
+  rulerGroup = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color: 0xc27b4a });
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, e.objH, 8), mat);
+  rulerGroup.add(rod);
+  for (let i = 0; i <= Math.floor(e.objH / tick); i++) {
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.004, 0.012), mat);
+    t.position.y = -e.objH/2 + i * tick;
+    rulerGroup.add(t);
+  }
+  rulerGroup.position.set(-0.38, objCenterY(e), 0.05);
+  e.group.add(rulerGroup);
+  this.classList.add('on');
+};
+
+function enterInspect(e) {
+  if (inspecting) return;
+  inspecting = true;
+  inspectedEx = e;
+  curInspectId = e.id;
+  populatePanel(e.id);
+  buildInspectExtras(e);
+  if (document.pointerLockElement) document.exitPointerLock();
+  if (vrm) vrm.scene.visible = false; // the tutor steps aside while you inspect
+  savedView = { mode, pos: camera.position.clone(), target: orbit.target.clone() };
+  if (mode === 'walk') setMode('orbit');
+  gizmo.detach(); selected = null;
+  inspectPrompt.style.display = 'none';
+  const c = e.group.position.clone(); c.y += PED_H + (e.objH || 0.5) / 2;
+  const dir = camera.position.clone().sub(c); dir.y = 0;
+  if (dir.lengthSq() < 1e-4) dir.set(1, 0, 1);
+  dir.normalize().multiplyScalar(1.0);
+  const end = c.clone().add(dir); end.y = c.y + 0.15;
+  orbit.minDistance = 0.3; orbit.maxDistance = 2.5;
+  flyTo(end, c);
+  inspectEl.classList.add('open');
+  status('inspecting · drag to orbit the exhibit · Esc to walk away');
+}
+let curHotspot = null;
+function populateHotspotPanel(h) {
+  // strips any [confirm …] marker; the old version only matched a bare
+  // "[confirm]" so the full note leaked into the participant view
+  const clean = (t) => t.replace(/\s*\[confirm[^\]]*\]/g, '').trim();
+  const unconfirmed = /\[confirm/.test(h.text);
+  document.getElementById('insFamily').textContent = 'LAB EQUIPMENT';
+  document.getElementById('insTitle').textContent = h.title;
+  document.getElementById('insSub').textContent = 'part of the captured training line';
+  document.getElementById('insTags').innerHTML =
+    ['Intelligent Manufacturing Lab', 'Captured 3DGS', 'Training line'].map((t) => `<span class="tag">${t}</span>`).join('');
+  document.getElementById('insSections').innerHTML =
+    `<div class="sec"><b>🔍 What you are looking at</b><p>${clean(h.text)}</p>` +
+    (unconfirmed ? '<p class="unconfirmed">The exact identification of this station is ' +
+      '<b>not confirmed</b> — describe what you can see rather than assuming its function.</p>' : '') +
+    `</div>` +
+    `<div class="sec"><b>💬 Want to know more?</b><p>Press <b>${TOUCH ? 'ask' : 'ask (Q)'}</b> and the tutor will answer ` +
+    `questions about this equipment.</p></div>`;
+}
+function enterInspectHotspot(h) {
+  if (inspecting) return;
+  inspecting = true;
+  curHotspot = h;
+  curInspectId = 'lab';
+  populateHotspotPanel(h);
+  if (document.pointerLockElement) document.exitPointerLock();
+  if (vrm) vrm.scene.visible = false;
+  savedView = { mode, pos: camera.position.clone(), target: orbit.target.clone() };
+  if (mode === 'walk') setMode('orbit');
+  gizmo.detach(); selected = null;
+  inspectPrompt.style.display = 'none';
+  insTools.style.display = 'none';
+  const c = h.mesh.position.clone();
+  const dir = camera.position.clone().sub(c); dir.y = 0;
+  if (dir.lengthSq() < 1e-4) dir.set(1, 0, 1);
+  dir.normalize().multiplyScalar(1.35);
+  const end = c.clone().add(dir); end.y = c.y + 0.35;
+  orbit.minDistance = 0.35; orbit.maxDistance = 3.5;
+  flyTo(end, c);
+  inspectEl.classList.add('open');
+  status(`inspecting "${h.title}" · drag to orbit · Esc to walk away`);
+}
+// move the inspect focus straight from one station to the next during the guided
+// tour, without flying back to the room in between. A consistent outward vantage
+// (stand just outside the machine cluster, look in) keeps the glide natural.
+function focusHotspot(h) {
+  curHotspot = h;
+  curInspectId = 'lab';
+  populateHotspotPanel(h);
+  const c = h.mesh.position.clone();
+  const out = new THREE.Vector3(c.x, 0, c.z - 0.2);   // from the cluster centre outward
+  if (out.lengthSq() < 0.04) out.set(0, 0, 1);
+  out.normalize().multiplyScalar(1.5);
+  flyTo(c.clone().add(out).setY(c.y + 0.4), c);
+  inspectEl.classList.add('open');
+  status(`inspecting "${h.title}" · drag to orbit · Esc to walk away`);
+}
+function exitInspect() {
+  if (!inspecting) return;
+  inspectEl.classList.remove('open');
+  clearInspectExtras();
+  inspectedEx = null;
+  curHotspot = null;
+  orbit.minDistance = 0.6; orbit.maxDistance = 10;
+  flyTo(savedView.pos, savedView.target, () => {
+    if (savedView.mode === 'walk') setMode('walk');
+    if (vrm) vrm.scene.visible = true;
+    inspecting = false;
+    status('back in the room');
+  });
+}
+document.getElementById('inspectClose').onclick = exitInspect;
+addEventListener('keydown', (e) => {
+  if (typing()) return;
+  if (e.code === 'Escape' && inspecting) exitInspect();
+  if (e.code === 'KeyE' && !inspecting && nearest) (nearest.mesh ? enterInspectHotspot(nearest) : enterInspect(nearest));
+});
+
+// ── duplicate / delete ──
+let hsEditing = false, hsSelected = null;
+document.getElementById('hsEdit').onclick = function () {
+  hsEditing = !hsEditing;
+  this.classList.toggle('on', hsEditing);
+  if (!hsEditing) { gizmo.detach(); hsSelected = null; }
+  status(hsEditing ? 'edit mode: click an info point, then drag the arrows'
+                   : 'edit mode off — clicking an info point now reads it out');
+};
+document.getElementById('layoutBtn').onclick = async () => {
+  const lay = {};
+  for (const e of exhibits) {
+    const p = e.group.position, r = e.group.rotation;
+    lay[e.id] = lay[e.id] || [];
+    lay[e.id].push({ pos: [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)], rotY: +r.y.toFixed(2) });
+  }
+  lay.hotspots = hotspots.map((h) => ({ id: h.id,
+    pos: [+h.mesh.position.x.toFixed(2), +h.mesh.position.y.toFixed(2), +h.mesh.position.z.toFixed(2)] }));
+  const txt = JSON.stringify(lay);
+  try { await navigator.clipboard.writeText(txt); status('layout copied — send it to Claude to make it permanent'); }
+  catch { prompt('Copy layout:', txt); }
+};
+document.getElementById('dup').onclick = () => {
+  const base = selected || exhibits[exhibits.length-1];
+  if (!base) return;
+  const p = base.group.position.clone().add(new THREE.Vector3(0.9, 0, 0));
+  const e = makeRobotExhibit(p);
+  e.group.rotation.copy(base.group.rotation);
+  status(`duplicated · ${exhibits.length} exhibit(s)`);
+};
+document.getElementById('del').onclick = () => {
+  if (!selected) { status('select an exhibit first'); return; }
+  gizmo.detach();
+  scene.remove(selected.group);
+  exhibits.splice(exhibits.indexOf(selected), 1);
+  selected = null;
+  status(`deleted · ${exhibits.length} exhibit(s) left`);
+};
+
+// ── static scientist figure (Sketchfab: "Modern Scientist in a Lab Coat" by
+//    restore50, CC-BY 4.0 — credited in the on-screen credit line). Standing on
+//    the floor at real height; no rig, so purely set dressing. ──
+let scientist = null;
+// meshopt-compressed + WebP-textured build: 21 MB -> 1 MB. Never fail the whole
+// arrival on the scientist alone — it is set dressing, so resolve either way.
+const sciReady = new Promise((resolve) => {
+  const SCI = { pos: new THREE.Vector3(-2.6, 0, 2.2), yawDeg: 128 };
+  const loader = new GLTFLoader();
+  loader.setMeshoptDecoder(MeshoptDecoder);
+  loader.load('scientist_opt.glb', (gltf) => {
+    const o = gltf.scene;
+    const b = new THREE.Box3().setFromObject(o);
+    o.position.y = -b.min.y;                 // seat feet exactly on the floor (y=0)
+    const holder = new THREE.Group();
+    holder.name = 'scientist';
+    holder.position.copy(SCI.pos);
+    holder.rotation.y = THREE.MathUtils.degToRad(SCI.yawDeg);
+    holder.add(o);
+    scene.add(holder);
+    scientist = holder;
+    window.__sci = holder;                   // handle for verification/repositioning
+    resolve();
+  }, undefined, (e) => { console.warn('scientist load failed', e); resolve(); });
+});
+
+// ── tutor avatar ──
+// The VRM anime avatar was REMOVED for the competition/study build: it read as a
+// game character in an industrial-training context and drew attention away from
+// the equipment. The tutor is now voice + floating subtitles only, which keeps
+// every `if (vrm)` guard below inert. `speaking` is still used by the TTS flow.
+let vrm = null, speakLevel = 0, speaking = false;
+status('press Q to ask the tutor a question');
+
+// ── arrival: doors swing open and the camera glides in ───────────────────────
+let arriving = null, entered = false;
+{
+  const veil = document.getElementById('entryVeil');
+  const btn = document.getElementById('enterBtn');
+  const OUT = new THREE.Vector3(0, 1.6, DOOR_Z + 3.4);   // outside, facing the door
+  const IN  = new THREE.Vector3(0, 1.62, DOOR_Z - 2.6);  // just inside the threshold
+  camera.position.copy(OUT);
+  camera.lookAt(0, 1.5, 0);
+  orbit.target.set(0, 1.4, DOOR_Z - 4);
+  orbit.enabled = false;
+  document.getElementById('tourStart').style.display = 'none';
+
+  // Hold the door shut until the lab is actually loaded, so nobody walks into an
+  // empty room. The button doubles as the progress indicator.
+  let ready = false;
+  btn.disabled = true;
+  btn.textContent = 'Loading the lab…';
+  const done = () => {
+    ready = true;
+    btn.disabled = false;
+    btn.textContent = 'Start';
+    status('lab ready — press Start to step inside');
+  };
+  Promise.all([venue.initialized, sciReady]).then(done);
+  setTimeout(() => { if (!ready) done(); }, 25000);   // never trap the visitor
+
+  btn.onclick = () => {
+    if (!ready) return;
+    veil.classList.add('gone');
+    setTimeout(() => veil.style.display = 'none', 850);
+    entered = true; document.body.classList.add('inside');
+    arriving = { t0: performance.now(), from: OUT.clone(), to: IN.clone() };
+    status('welcome in — press ▶ for the guided tour');
+  };
+}
+const ARRIVE_MS = 3200;
+function updateArrival() {
+  const d = window.__door;
+  if (!arriving) return;
+  // wall-clock, not accumulated dt: the render loop clamps dt to 0.05, so on a
+  // slow machine a dt-driven tween would crawl for minutes instead of seconds
+  const k = Math.min(1, (performance.now() - arriving.t0) / ARRIVE_MS);
+  arriving.k = k;
+  const ease = k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3) / 2;
+  // doors lead the camera: fully open by the time we reach the threshold
+  d.open = Math.min(1, k * 1.9);
+  for (const L of d.leaves) L.hinge.rotation.y = -L.dir * d.open * Math.PI * 0.52;
+  camera.position.lerpVectors(arriving.from, arriving.to, ease);
+  const lookK = Math.min(1, k * 1.3);
+  camera.lookAt(0, 1.35 - lookK * 0.15, DOOR_Z - 4 - lookK * 3);
+  if (k >= 1) {
+    arriving = null;
+    orbit.target.set(0, 1.0, 0.2);
+    // hand control over in the mode the visitor should actually explore in
+    setMode(mode);
+    document.getElementById('tourStart').style.display = 'block';
+  }
+}
+
+// ── guided tour: walk the 9 stations in production order ──────────────────────
+// Without this the room gives no clue where to begin; a visitor lands in an
+// orbit view facing a wall of machinery. The tour flies to each station in the
+// same order the 2D group reads them, so both arms tell one story.
+{
+  const bar = document.getElementById('tourBar');
+  const startBtn = document.getElementById('tourStart');
+  const stepEl = document.getElementById('tourStep');
+  const nameEl = document.getElementById('tourName');
+  const prev = document.getElementById('tourPrev');
+  const next = document.getElementById('tourNext');
+  const exit = document.getElementById('tourExit');
+  let idx = -1;
+  let modeBeforeTour = null;
+
+  function show(i) {
+    idx = Math.max(0, Math.min(hotspots.length - 1, i));
+    const h = hotspots[idx];
+    stepEl.textContent = `Station ${h.step} of ${hotspots.length}`;
+    nameEl.textContent = h.stepTitle;
+    prev.disabled = idx === 0;
+    next.disabled = idx === hotspots.length - 1;
+    // highlight the current marker, dim the rest
+    hotspots.forEach((x, k) => {
+      x.num.scale.setScalar(k === idx ? 0.19 : 0.115);
+      x.mesh.material = k === idx ? hsMatOn : hsMat;
+    });
+    if (inspecting) focusHotspot(h);   // glide station-to-station, no bounce
+    else enterInspectHotspot(h);       // first station: enter and remember the room view
+  }
+  window.__tour = { show: (i) => show(i), get idx() { return idx; } };
+
+  startBtn.onclick = () => {
+    startBtn.style.display = 'none';
+    bar.style.display = 'flex';
+    modeBeforeTour = mode;
+    if (mode === 'walk') setMode('orbit');   // the tour drives the camera itself
+    show(0);
+  };
+  next.onclick = () => show(idx + 1);
+  prev.onclick = () => show(idx - 1);
+  exit.onclick = () => {
+    bar.style.display = 'none';
+    startBtn.style.display = 'block';
+    idx = -1;
+    hotspots.forEach((x) => { x.num.scale.setScalar(0.13); x.mesh.material = hsMat; });
+    if (inspecting) exitInspect();
+    if (modeBeforeTour) setMode(modeBeforeTour);
+  };
+  addEventListener('keydown', (e) => {
+    if (bar.style.display !== 'flex' || askBox.style.display === 'block') return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); if (idx < hotspots.length - 1) show(idx + 1); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); if (idx > 0) show(idx - 1); }
+  });
+}
+
+// ── study flow: finish button (only for participants who came through intake) ──
+{
+  const KEY = 'exhibitlab.run';
+  const read = () => { try { return JSON.parse(sessionStorage.getItem(KEY)) || {}; } catch { return {}; } };
+  let run = read();
+  // ?preview=1 lets the flow be inspected without filling in the intake form
+  if (!run.pid && new URLSearchParams(location.search).has('preview')) {
+    run = { pid: 'PREVIEW', preview: true, group: 2, arm: 'B' };
+    sessionStorage.setItem(KEY, JSON.stringify(run));
+  }
+  if (run.pid) {                       // arrived from /study/group2/, not a casual visitor
+    if (!run.tExploreStart) {
+      run.tExploreStart = Date.now();
+      sessionStorage.setItem(KEY, JSON.stringify(run));
+    }
+    const fb = document.getElementById('finishBtn');
+    const wrap = document.getElementById('finishWrap');
+    fb.style.display = 'inline-block';
+    fb.onclick = () => wrap.style.display = 'flex';
+    document.getElementById('finishNo').onclick = () => wrap.style.display = 'none';
+    document.getElementById('finishYes').onclick = () => {
+      const r = read(), t = Date.now();
+      r.tExploreEnd = t;
+      r.exploreSeconds = r.tExploreStart ? Math.round((t - r.tExploreStart) / 1000) : null;
+      sessionStorage.setItem(KEY, JSON.stringify(r));
+      const p = new URLSearchParams();
+      if (r.pid) p.set('pid', r.pid);
+      p.set('arm', r.arm || 'B');
+      if (r.exploreSeconds != null) p.set('secs', r.exploreSeconds);
+      location.href = '../study/q/?' + p.toString();
+    };
+  }
+}
+
+// ── ask-the-tutor flow (Claude Sonnet via /china_comp/tutor_api/) ──
+// ── tutor language: changes both the answer language and the Piper voice ──
+let lang = 'en';   // other languages temporarily disabled
+const langBtns = document.querySelectorAll('#langRow .lang');
+const syncLangUI = () => langBtns.forEach((b) => b.classList.toggle('on', b.dataset.l === lang));
+langBtns.forEach((b) => b.onclick = () => {
+  if (b.disabled || b.dataset.l !== 'en') return;   // EN only for now
+  lang = 'en'; syncLangUI();
+});
+syncLangUI();
+
+const askBox = document.getElementById('askBox');
+const askInput = document.getElementById('askInput');
+const sub = document.getElementById('sub');
+const subQ = document.getElementById('subQ');
+const subText = document.getElementById('subText');
+const subStop = document.getElementById('subStop');
+const logEntries = document.getElementById('logEntries');
+let askBusy = false;
+const STATIC_COPY = true;   // static copy on GitHub Pages
+
+// ── conversation log (open with 📜) ──
+const logPanel = document.getElementById('logPanel');
+document.getElementById('logBtn').onclick = () => {
+  logPanel.style.display = logPanel.style.display === 'block' ? 'none' : 'block';
+};
+function logExchange(q, a) {
+  const e = document.createElement('div');
+  e.className = 'le';
+  e.innerHTML = `<div class="lq"></div><div class="la"></div>`;
+  e.querySelector('.lq').textContent = 'You: ' + q;
+  e.querySelector('.la').textContent = a;
+  logEntries.appendChild(e);
+  logPanel.scrollTop = logPanel.scrollHeight;
+}
+
+// ── MISide-style floating subtitle: word-by-word reveal, then fade to the log ──
+let reveal = null; // { spans, next, timer }
+let fadeTimer = null;
+function stopReveal(showAll) {
+  if (!reveal) return;
+  clearInterval(reveal.timer);
+  if (showAll) for (const s of reveal.spans) { s.style.animation = 'none'; s.style.opacity = 1; }
+  reveal = null;
+}
+function fadeSoon(delay) {
+  clearTimeout(fadeTimer);
+  fadeTimer = setTimeout(() => sub.classList.add('fade'), delay);
+}
+// pre-recorded station narration — baked once with Piper, so narrating a station
+// plays a static MP3 and never calls the live TTS endpoint
+const TTS_CLIP = { distributing:'tts/distributing.mp3', carriers:'tts/carriers.mp3',
+  handling1:'tts/handling1.mp3', handling2:'tts/handling2.mp3', arm:'tts/arm.mp3',
+  assembly:'tts/assembly.mp3', asrs:'tts/asrs.mp3', controller:'tts/controller.mp3',
+  air:'tts/air.mp3' };
+// ── voice: Piper neural TTS from the server, amplitude-driven lip sync ──
+let curAudio = null, audioCtx = null, analyser = null, ampData = null;
+function stopVoice() {
+  if (curAudio) { curAudio.pause(); curAudio.src = ''; curAudio = null; }
+  speechSynthesis.cancel();
+  speaking = false;
+  subStop.style.display = 'none';
+}
+function ensureAudioCtx() { // call from a user gesture so autoplay policy is satisfied
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch {}
+}
+function wireAndPlay(a, onEnded) {
+  curAudio = a;
+  try { // route through an analyser so the subtitle pace can follow the waveform
+    ensureAudioCtx();
+    const src = audioCtx.createMediaElementSource(a);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    ampData = new Uint8Array(analyser.frequencyBinCount);
+    src.connect(analyser);
+    analyser.connect(audioCtx.destination);
+  } catch {}
+  a.onplay = () => { speaking = true; subStop.style.display = 'block'; };
+  a.onended = () => { speaking = false; curAudio = null; subStop.style.display = 'none'; onEnded && onEnded(); };
+  return a.play().then(() => a);
+}
+// pre-recorded station narration: play a baked MP3 instead of calling Piper live
+function speakClip(url, onEnded) {
+  return wireAndPlay(new Audio(url), onEnded);
+}
+// live Piper: only used for dynamic tutor answers, which cannot be pre-recorded
+async function speakPiper(text, onEnded) {
+  const r = await fetch('../api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, lang }),
+  });
+  if (!r.ok) throw new Error('tts http ' + r.status);
+  return wireAndPlay(new Audio(URL.createObjectURL(await r.blob())), onEnded);
+}
+function showSubtitle(question, answer, withVoice, audioUrl) {
+  stopReveal(false);
+  stopVoice();
+  clearTimeout(fadeTimer);
+  sub.classList.remove('fade');
+  subQ.textContent = question ? 'you: ' + question : '';
+  sub.style.display = 'block';
+  // Chinese has no spaces — reveal in 2-character chunks instead of words
+  const zh = lang === 'zh' && !/\s/.test(answer.slice(0, 40));
+  const words = zh ? (answer.match(/[^\s]{1,2}/g) || [answer])
+                   : answer.split(/\s+/).filter(Boolean);
+  subText.innerHTML = '';
+  const spans = words.map((w) => {
+    const s = document.createElement('span');
+    s.textContent = zh ? w : w + ' ';
+    s.style.opacity = 0; s.style.animation = 'none';
+    subText.appendChild(s);
+    return s;
+  });
+  const show = (i) => { if (spans[i]) { spans[i].style.animation = ''; spans[i].classList.add('w'); } };
+  reveal = { spans, next: 0, timer: null };
+  const done = () => {
+    stopReveal(true);
+    subStop.style.display = 'none';
+    fadeSoon(6000); // linger, then fade — full text stays in the 📜 log
+  };
+  const tick = () => {
+    if (!reveal) return;
+    show(reveal.next++);
+    if (reveal.next >= spans.length) done();
+  };
+  const setPace = (ms) => {
+    if (!reveal) return;
+    clearInterval(reveal.timer);
+    reveal.timer = setInterval(tick, Math.max(60, ms));
+  };
+  setPace(150); // provisional pace until the audio duration is known
+  if (withVoice) {
+    const voice = audioUrl ? speakClip(audioUrl, () => reveal && done())
+                           : speakPiper(answer, () => reveal && done());
+    voice
+      .then((a) => {
+        const adjust = () => a.duration && setPace((a.duration * 1000 * 0.92) / words.length);
+        if (a.duration) adjust(); else a.addEventListener('loadedmetadata', adjust);
+      })
+      .catch(() => { // fallback: browser speech synthesis
+        if (!('speechSynthesis' in window)) return;
+        const u = new SpeechSynthesisUtterance(answer);
+        u.onstart = () => { speaking = true; subStop.style.display = 'block'; };
+        u.onend = () => { speaking = false; subStop.style.display = 'none'; if (reveal) done(); };
+        speechSynthesis.speak(u);
+      });
+  }
+}
+subStop.onclick = () => {
+  stopVoice();
+  stopReveal(true);
+  fadeSoon(5000);
+};
+
+function openAsk() {
+  ensureAudioCtx(); // user gesture — unlock audio for the upcoming answer
+  askBox.style.display = 'block';
+  askInput.focus();
+}
+document.getElementById('askBtn').onclick = openAsk;
+document.getElementById('askCancel').onclick = () => { askBox.style.display = 'none'; askInput.blur(); };
+askInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendAsk();
+  if (e.key === 'Escape') { askBox.style.display = 'none'; askInput.blur(); }
+  e.stopPropagation();
+});
+document.getElementById('askSend').onclick = sendAsk;
+
+async function sendAsk() {
+  const q = askInput.value.trim();
+  if (!q || askBusy) return;
+  askBusy = true;
+  askBox.style.display = 'none';
+  askInput.value = '';
+  clearTimeout(fadeTimer);
+  sub.classList.remove('fade');
+  subQ.textContent = 'you: ' + q;
+  subText.innerHTML = '<span class="w">…</span>';
+  sub.style.display = 'block';
+  if (STATIC_COPY) {   // GitHub Pages copy: no server, so no live tutor
+    const msg = 'The live AI tutor is not in this static copy. The guided tour, the station texts and the recorded voice all work.';
+    showSubtitle(q, msg, false); logExchange(q, msg); askBusy = false; return;
+  }
+  try {
+    const r = await fetch('../api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: curHotspot ? `[The student is looking at: ${curHotspot.title}] ${q}` : q,
+        lang,
+        exhibit: inspecting ? curInspectId : (nearest?.id || 'lab'),
+      }),
+    });
+    const j = await r.json();
+    const ans = j.answer || j.error || 'sorry, something went wrong.';
+    showSubtitle(q, ans, !!j.answer);
+    logExchange(q, ans);
+  } catch {
+    showSubtitle(q, 'network error — is the tutor api running?', false);
+  }
+  askBusy = false;
+}
+
+// ── tutor life layer: breathing, blinking, weight shifts, wave, talk gestures ──
+let blinkClock = 0, nextBlink = 2.5, waveT = -1, gestureLvl = 0;
+const lerpA = (node, axis, target, dt, speed = 6) => {
+  if (node) node.rotation[axis] += (target - node.rotation[axis]) * Math.min(1, dt * speed);
+};
+function animateTutor(dt) {
+  const t = tAll;
+  const B = (n) => vrm.humanoid?.getNormalizedBoneNode(n);
+  const talking = (speaking || reveal) ? 1 : 0;
+  gestureLvl += (talking - gestureLvl) * Math.min(1, dt * 3);
+
+  // whole-body idle: gentle turn + bob
+  vrm.scene.rotation.y = -2.25 + Math.sin(t * 0.5) * 0.05;
+  vrm.scene.position.y = Math.sin(t * 1.7) * 0.004;
+
+  // breathing + weight shift
+  lerpA(B('chest'), 'x', 0.025 * Math.sin(t * 1.9), dt, 10);
+  lerpA(B('hips'), 'z', 0.025 * Math.sin(t * 0.4), dt, 10);
+  lerpA(B('spine'), 'z', -0.02 * Math.sin(t * 0.4), dt, 10);
+
+  // head: small living motion, slightly livelier nods while talking (eyes track via lookAt)
+  const head = B('head'), neck = B('neck');
+  lerpA(head, 'x', 0.015 * Math.sin(t * 0.7) + 0.02 * Math.sin(t * 2.2) * gestureLvl, dt, 8);
+  lerpA(head, 'z', 0.01 * Math.sin(t * 1.1), dt, 8);
+  lerpA(neck, 'y', 0.015 * Math.sin(t * 0.9), dt, 8);
+
+  // arms: pinned to the natural relaxed pose — no procedural gestures.
+  // (Sine-wave arm motion reads as broken/creepy; real gestures will come from
+  // Mixamo clips retargeted onto the VRM later.)
+  lerpA(B('rightUpperArm'), 'z', -1.15, dt, 8);
+  lerpA(B('rightLowerArm'), 'z', -0.15, dt, 8);
+  lerpA(B('leftUpperArm'), 'z', 1.15, dt, 8);
+  lerpA(B('leftLowerArm'), 'z', 0.15, dt, 8);
+
+  // mouth while speaking — follows the real audio amplitude when the analyser is live
+  let mouth = 0;
+  if (speaking) {
+    if (analyser && ampData) {
+      analyser.getByteFrequencyData(ampData);
+      let sum = 0; for (let i = 2; i < 40; i++) sum += ampData[i];
+      mouth = Math.min(0.9, Math.max(0, (sum / 38 - 25) / 90));
+    } else {
+      mouth = 0.35 + 0.3 * Math.abs(Math.sin(t * 9));
+    }
+  }
+  speakLevel += (mouth - speakLevel) * Math.min(1, dt * 18);
+  vrm.expressionManager?.setValue('aa', speakLevel);
+
+  // blinking
+  blinkClock += dt;
+  let blink = 0;
+  if (blinkClock > nextBlink) {
+    const k = (blinkClock - nextBlink) / 0.16;
+    if (k >= 1) { blinkClock = 0; nextBlink = 2 + Math.random() * 3.5; }
+    else blink = Math.sin(k * Math.PI);
+  }
+  vrm.expressionManager?.setValue('blink', blink);
+
+  vrm.update(dt);
+}
+
+// ── info panel + browser TTS (ali-demo narration logic) ──
+const info = document.getElementById('info');
+function openInfo() {
+  document.getElementById('infoTitle').textContent = ROBOT_INFO.title;
+  document.getElementById('infoText').textContent = ROBOT_INFO.text;
+  info.style.display = 'block';
+}
+document.getElementById('infoClose').onclick = () => { info.style.display = 'none'; speechSynthesis.cancel(); };
+document.getElementById('infoSay').onclick = () => {
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(`${ROBOT_INFO.title}. ${ROBOT_INFO.text}`);
+  u.rate = 1.0; speechSynthesis.speak(u);
+};
+
+// ── main loop ──
+const clock = new THREE.Clock();
+const fwd = new THREE.Vector3(), right = new THREE.Vector3();
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+const LIM = 5.1;  // walkable extent of the hall (11 x 11 m)
+let tAll = 0;
+// subtitle camera-drift: text lags a touch behind camera turns, then eases back
+const lastDir = new THREE.Vector3(), curDir = new THREE.Vector3(), camRight = new THREE.Vector3();
+let subOx = 0, subOy = 0;
+camera.getWorldDirection(lastDir);
+const hoverPtr = new THREE.Vector2();
+const projV = new THREE.Vector3();
+let hovered = null;
+renderer.setAnimationLoop(() => {
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.05);
+  tAll += dt;
+  updateArrival();
+  updateCarriers(dt);
+  updateArm(tAll);
+  for (const e of exhibits) e.marker.rotation.y += dt * 1.5;
+  for (const h of hotspots) {
+    h.halo.quaternion.copy(camera.quaternion);
+    const k = 1 + Math.sin(tAll * 2.2) * 0.12;
+    h.halo.scale.setScalar(k);
+  }
+  // hover highlight: ring lights up under the exhibit you're pointing at
+  if (!inspecting && !fly) {
+    const useCenter = mode === 'walk' && locked();
+    hoverPtr.set(useCenter ? 0 : (hoverX/innerWidth)*2 - 1,
+                 useCenter ? 0 : -(hoverY/innerHeight)*2 + 1);
+    ray.setFromCamera(hoverPtr, camera);
+    const hs = ray.intersectObjects(exhibits.map((x) => x.proxy), false)[0];
+    hovered = hs ? exhibits.find((x) => x.proxy === hs.object) : null;
+  } else hovered = null;
+  for (const e of exhibits)
+    e.ring.material.opacity += (((hovered === e || nearest === e) ? 0.85 : 0) - e.ring.material.opacity) * Math.min(1, dt * 10);
+  // project inspect hotspot pins to screen
+  if (inspecting && insPins.length) {
+    for (const p of insPins) {
+      projV.copy(p.world).project(camera);
+      const vis = projV.z < 1;
+      p.el.style.display = vis ? 'flex' : 'none';
+      if (vis) {
+        p.el.style.left = ((projV.x + 1) / 2 * innerWidth) + 'px';
+        p.el.style.top = ((1 - projV.y) / 2 * innerHeight) + 'px';
+      }
+    }
+  }
+  // camera fly tween (inspect enter/exit) — unclamped time so slow devices still finish quickly
+  if (fly) {
+    fly.k = Math.min(1, fly.k + Math.min(rawDt, 0.5) * 1.6);
+    const ease = 1 - Math.pow(1 - fly.k, 3);
+    camera.position.lerpVectors(fly.p0, fly.p1, ease);
+    orbit.target.lerpVectors(fly.t0, fly.t1, ease);
+    if (fly.k >= 1) { const cb = fly.onDone; fly = null; if (cb) cb(); }
+  }
+  // proximity prompt: nearest exhibit within reach
+  if (!inspecting && !fly) {
+    let best = null, bd = 1e9;
+    for (const e of exhibits) {
+      const dx = camera.position.x - e.group.position.x, dz = camera.position.z - e.group.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < bd) { bd = d; best = e; }
+    }
+    for (const h of hotspots) {           // info points on the lab equipment
+      const dx = camera.position.x - h.mesh.position.x, dz = camera.position.z - h.mesh.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < bd) { bd = d; best = h; }
+    }
+    nearest = bd < NEAR_DIST ? best : null;
+    if (nearest) {
+      const t = nearest.mesh ? nearest.title : (CONTENT[nearest.id] || CONTENT.robot).title;
+      if (inspectPrompt.dataset.t !== t) {
+        inspectPrompt.dataset.t = t;
+        inspectPrompt.innerHTML = TOUCH ? `🔍 tap to inspect <b>${t}</b>` : `🔍 <kbd>E</kbd> or click — inspect <b>${t}</b>`;
+      }
+    }
+    inspectPrompt.style.display = nearest ? 'block' : 'none';
+  } else {
+    inspectPrompt.style.display = 'none';
+  }
+  camera.getWorldDirection(curDir);
+  camRight.crossVectors(curDir, camera.up).normalize();
+  subOx -= curDir.clone().sub(lastDir).dot(camRight) * 900;
+  subOy += (curDir.y - lastDir.y) * 500;
+  subOx *= Math.pow(0.03, dt); subOy *= Math.pow(0.03, dt); // spring back
+  subOx = THREE.MathUtils.clamp(subOx, -70, 70); subOy = THREE.MathUtils.clamp(subOy, -40, 40);
+  lastDir.copy(curDir);
+  if (sub.style.display === 'block')
+    sub.style.transform = `translate(calc(-50% + ${subOx.toFixed(1)}px), ${subOy.toFixed(1)}px)`;
+  if (vrm) animateTutor(dt);
+  if (!entered || arriving) {
+    // outside the door, or mid-entry: the arrival owns the camera. Neither
+    // OrbitControls nor the walk controller may touch it yet.
+  } else if (mode === 'orbit') {
+    orbit.update();
+  } else {
+    fwd.set(Math.cos(pitch)*Math.sin(yaw), Math.sin(pitch), Math.cos(pitch)*Math.cos(yaw));
+    camera.lookAt(camera.position.x + fwd.x, camera.position.y + fwd.y, camera.position.z + fwd.z);
+    const sp = (keys['ShiftLeft']||keys['ShiftRight']) ? SPEED_FAST : SPEED;
+    const f = THREE.MathUtils.clamp((keys['KeyW']?1:0) - (keys['KeyS']?1:0) - joy.y, -1, 1);
+    const s = THREE.MathUtils.clamp((keys['KeyD']?1:0) - (keys['KeyA']?1:0) + joy.x, -1, 1);
+    fwd.y = 0; fwd.normalize();
+    if (f) camera.position.addScaledVector(fwd, f*sp*dt);
+    if (s) { right.crossVectors(fwd, WORLD_UP).normalize(); camera.position.addScaledVector(right, s*sp*dt); }
+    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -LIM, LIM);
+    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -LIM, LIM);
+    camera.position.y = EYE;
+  }
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

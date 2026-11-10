@@ -56,6 +56,7 @@ figure { margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 figure img { border-radius: 6px; border: 1px solid var(--rule); width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 figure.wide img { aspect-ratio: auto; background: #ffffff; padding: 0.75rem; }
 figcaption { color: var(--muted); font-size: 0.95rem; }
+video { width: 100%; max-width: 54rem; aspect-ratio: 16 / 9; border-radius: 6px; border: 1px solid var(--rule); background: #000; }
 .tablewrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 caption { text-align: left; color: var(--muted); font-size: 0.95rem; padding-bottom: 0.4rem; }
@@ -94,8 +95,8 @@ blockquote footer { color: var(--muted); font-size: 0.92rem; }
   <p class="award">Silver Award, 2026</p>
   <p class="lede col">A walkable 3D copy of a real engineering lab, made from one phone video, with an AI tutor inside. Students learn at their own pace in a web browser.</p>
   <p class="links">
-    <a href="https://kitan-a.com/china_comp/tutor_room/">Open the 3D lab (desktop browser)</a>
-    <a href="https://kitan-a.com/china_comp/ask_the_lab_submission.mp4">Watch the 5-minute video</a>
+    <a href="demo/">Open the 3D lab (desktop browser)</a>
+    <a href="#video">Watch the 5-minute video</a>
   </p>
 </header>
 
@@ -104,6 +105,12 @@ blockquote footer { color: var(--muted); font-size: 0.92rem; }
     <figure><img src="img/lab.jpg" alt="The real modular production line with a robot arm in the lab" width="1280" height="720"><figcaption>The real lab, Room 7e.230, Nazarbayev University.</figcaption></figure>
     <figure><img src="img/scene.jpg" alt="The 3D copy of the same production line with numbered station markers" width="825" height="598"><figcaption>Its 3D copy in the browser, with 9 stations to explore.</figcaption></figure>
   </div>
+</section>
+
+<section id="video">
+  <h2>The project in 5 minutes</h2>
+  <video controls preload="none" poster="img/scene.jpg" src="ask_the_lab.mp4"></video>
+  <p class="col note">English and Chinese subtitles. The 3D lab linked above is a static copy: the guided tour, the station texts and the recorded voice work, the live AI tutor does not.</p>
 </section>
 
 <section>
