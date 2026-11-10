@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-Enhanced 3D Manufacturing Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one reading column (max 46rem) with wide figure rows that break out to 62rem.
+   Colours come from the lab itself: blue vinyl floor, teal splats, the yellow safety line. */
+:root {
+  --paper: #f4f6f8;
+  --surface: #ffffff;
+  --ink: #17232e;
+  --muted: #55636f;
+  --rule: #cfd7de;
+  --accent: #0f6f6a;      /* teal of the splat drawing */
+  --line: #e2b100;        /* the yellow floor line */
+  --bar2d: #9aa8b4;
+  --bar3d: #0f6f6a;
+  --display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --body: "Source Sans 3", "Segoe UI", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #10181f; --surface: #18232c; --ink: #e8eef2; --muted: #9eadb8; --rule: #2e3d49;
+    --accent: #58c4bb; --line: #f0c530; --bar2d: #6f808d; --bar3d: #58c4bb;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #10181f; --surface: #18232c; --ink: #e8eef2; --muted: #9eadb8; --rule: #2e3d49;
+  --accent: #58c4bb; --line: #f0c530; --bar2d: #6f808d; --bar3d: #58c4bb;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 1.0625rem/1.6 var(--body); }
+main { max-width: 62rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; display: flex; flex-direction: column; gap: 3.25rem; }
+section, header { display: flex; flex-direction: column; gap: 1.1rem; }
+.col { max-width: 46rem; }
+h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2rem, 5.2vw, 3.1rem); line-height: 1.08; font-weight: 700; }
+h2 { font-size: 1.6rem; line-height: 1.2; font-weight: 600; padding-top: 0.9rem; border-top: 3px solid var(--line); align-self: flex-start; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: 0.18em; }
+a:focus-visible { outline: 3px solid var(--line); outline-offset: 3px; border-radius: 2px; }
+img { max-width: 100%; height: auto; display: block; }
+.kicker { font-weight: 600; color: var(--muted); font-size: 0.95rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.award { font-family: var(--display); font-weight: 600; font-size: 1.2rem; color: var(--accent); }
+.lede { font-size: 1.25rem; line-height: 1.5; }
+.links { display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; font-weight: 600; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1.25rem; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+figure img { border-radius: 6px; border: 1px solid var(--rule); width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+figure.wide img { aspect-ratio: auto; background: #ffffff; padding: 0.75rem; }
+figcaption { color: var(--muted); font-size: 0.95rem; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+caption { text-align: left; color: var(--muted); font-size: 0.95rem; padding-bottom: 0.4rem; }
+th, td { text-align: left; padding: 0.55rem 0.9rem 0.55rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th { font-weight: 600; color: var(--muted); font-size: 0.92rem; border-bottom: 2px solid var(--ink); white-space: nowrap; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+td.big { font-family: var(--display); font-weight: 600; font-size: 1.2rem; white-space: nowrap; }
+.note { color: var(--muted); }
+ol.steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1.25rem; counter-reset: s; }
+ol.steps li { counter-increment: s; }
+ol.steps li::before { content: counter(s); font-family: var(--display); font-weight: 700; font-size: 1.5rem; color: var(--accent); display: block; }
+ol.steps strong { display: block; }
+ul { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.bars { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.55rem 0.9rem; align-items: center; }
+.bars .lab { font-weight: 600; }
+.track { display: flex; flex-direction: column; gap: 3px; }
+.bar { height: 0.8rem; border-radius: 2px; min-width: 2px; position: relative; }
+.bar span { position: absolute; left: calc(100% + 0.4rem); top: 50%; transform: translateY(-50%); font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.b2 { background: var(--bar2d); } .b3 { background: var(--bar3d); }
+.barbox { padding-right: 2.2rem; }
+.legend { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.95rem; color: var(--muted); }
+.legend i { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 2px; margin-right: 0.4rem; vertical-align: -1px; }
+.quotes { max-width: 52rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1.5rem 2rem; }
+blockquote { margin: 0; padding-left: 1rem; border-left: 3px solid var(--rule); display: flex; flex-direction: column; gap: 0.4rem; }
+blockquote p { font-family: var(--display); font-size: 1.1rem; line-height: 1.45; }
+blockquote footer { color: var(--muted); font-size: 0.92rem; }
+.foot { color: var(--muted); font-size: 0.95rem; border-top: 1px solid var(--rule); padding-top: 1.25rem; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="kicker">DI-IDEA 2026, Peking University, AI for Teaching and Learning</p>
+  <h1>AI-Enhanced 3D Manufacturing Lab</h1>
+  <p class="award">Silver Award, 2026</p>
+  <p class="lede col">A walkable 3D copy of a real engineering lab, made from one phone video, with an AI tutor inside. Students learn at their own pace in a web browser.</p>
+  <p class="links">
+    <a href="https://kitan-a.com/china_comp/tutor_room/">Open the 3D lab (desktop browser)</a>
+    <a href="https://kitan-a.com/china_comp/ask_the_lab_submission.mp4">Watch the 5-minute video</a>
+  </p>
+</header>
+
+<section>
+  <div class="pair">
+    <figure><img src="img/lab.jpg" alt="The real modular production line with a robot arm in the lab" width="1280" height="720"><figcaption>The real lab, Room 7e.230, Nazarbayev University.</figcaption></figure>
+    <figure><img src="img/scene.jpg" alt="The 3D copy of the same production line with numbered station markers" width="825" height="598"><figcaption>Its 3D copy in the browser, with 9 stations to explore.</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>The problem</h2>
+  <p class="col">One real production line teaches only a few students at a time, and only inside the lab. Photos and text cannot show how the parts move and connect.</p>
+  <p class="col">With this method, any teacher can do the same with equipment they already have. One phone video is enough to put a lab online for students who cannot be in the room.</p>
+  <div class="tablewrap col">
+    <table>
+      <caption>The build in four numbers</caption>
+      <tbody>
+        <tr><td class="big">1 phone video</td><td>17 minutes of 4K, recorded by hand. No special camera.</td></tr>
+        <tr><td class="big">93%</td><td>of the frames placed in 3D (2,804 of 3,010).</td></tr>
+        <tr><td class="big">~8 MB</td><td>the whole lab, in any browser, with no install.</td></tr>
+        <tr><td class="big">9 stations</td><td>with a guided tour and an AI tutor.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>How we built it</h2>
+  <figure class="wide"><img src="img/pipeline.jpg" alt="Drawing: a phone films the production line, the line becomes a cloud of 3D points, the points appear in a laptop browser with a chat bubble and a speaker" width="1400" height="345"></figure>
+  <ol class="steps">
+    <li><strong>Phone video</strong>One person walks around the line with a phone.</li>
+    <li><strong>3D Gaussian splats</strong>COLMAP places the frames in 3D, then nerfstudio trains the splat model (302K splats in the lab zone).</li>
+    <li><strong>Browser and AI tutor</strong>three.js and Spark show the lab in any browser. A server adds the AI tutor and a voice.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>What a student can do</h2>
+  <div class="pair">
+    <ul>
+      <li>Walk through the lab with the keyboard and mouse, or orbit around it.</li>
+      <li>Follow the guided tour through 9 stations: the parts feeder, carriers, handling stations, robot arm, assembly, storage, the PLC cabinet and the air supply.</li>
+      <li>Ask the AI tutor about the station in view. The tutor (Claude Sonnet) answers in 30 words or fewer.</li>
+      <li>Listen: a neural voice reads the answers and station texts, with subtitles word by word.</li>
+    </ul>
+    <figure><img src="img/inspect.jpg" alt="View inside the 3D lab near the second handling station, with a prompt to inspect it" width="825" height="598"><figcaption>Inspect a station, then ask.</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>Does the 3D lab help students understand the line?</h2>
+  <p class="col">User study, 24 to 26 August 2026. 15 students from Bachelor to PhD, 9 majors, age 19 to 39. Each student used two versions, one day apart: a 2D page (10 photos with captions) and the 3D lab with the AI tutor. 7 started with 2D and 8 with 3D. After each version: an 8-question quiz, NASA-TLX workload, SUS usability, and comments.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Measure</th><th class="num">2D page</th><th class="num">3D lab</th><th>What it shows</th></tr></thead>
+      <tbody>
+        <tr><td>Quiz score, of 8</td><td class="num">5.7</td><td class="num"><strong>6.5</strong></td><td>6 students did better in 3D, 0 did worse (sign test p = 0.03).</td></tr>
+        <tr><td>Spatial questions, of 3</td><td class="num">1.6</td><td class="num"><strong>2.3</strong></td><td>Layout, size, what is next to what: 8 better, 0 worse (p = 0.008).</td></tr>
+        <tr><td>Time exploring, median</td><td class="num">168 s</td><td class="num"><strong>344 s</strong></td><td>Students stayed twice as long in 3D.</td></tr>
+        <tr><td>Usability (SUS, 0 to 100)</td><td class="num">64.3</td><td class="num">60.2</td><td>Both near the usual "acceptable" level.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="col"><strong>Workload (NASA-TLX, 0 to 100, lower is easier).</strong> The 3D lab asks more of the student: more moving, more to look at, and some lag on slow computers.</p>
+  <div class="legend"><span><i class="b2"></i>2D page</span><span><i class="b3"></i>3D lab with AI tutor</span></div>
+  <div class="bars col barbox" role="img" aria-label="NASA-TLX workload, 2D page then 3D lab. Mental 52 and 60. Physical 25 and 39. Temporal 31 and 43. Performance 52 and 51. Effort 43 and 45. Frustration 35 and 45.">
+    <div class="lab">Mental</div><div class="track"><div class="bar b2" style="width:52%"><span>52</span></div><div class="bar b3" style="width:60%"><span>60</span></div></div>
+    <div class="lab">Physical</div><div class="track"><div class="bar b2" style="width:25%"><span>25</span></div><div class="bar b3" style="width:39%"><span>39</span></div></div>
+    <div class="lab">Temporal</div><div class="track"><div class="bar b2" style="width:31%"><span>31</span></div><div class="bar b3" style="width:43%"><span>43</span></div></div>
+    <div class="lab">Performance</div><div class="track"><div class="bar b2" style="width:52%"><span>52</span></div><div class="bar b3" style="width:51%"><span>51</span></div></div>
+    <div class="lab">Effort</div><div class="track"><div class="bar b2" style="width:43%"><span>43</span></div><div class="bar b3" style="width:45%"><span>45</span></div></div>
+    <div class="lab">Frustration</div><div class="track"><div class="bar b2" style="width:35%"><span>35</span></div><div class="bar b3" style="width:45%"><span>45</span></div></div>
+  </div>
+  <p class="col note"><strong>Limits.</strong> Small sample (15). The quiz was given only after each version, with no pre-test. The 2D page had no AI tutor, so the result compares "3D with tutor" against "photos with text". Students asked for simpler tutor language, a sharper scene and less lag.</p>
+</section>
+
+<section>
+  <h2>What students said</h2>
+  <div class="quotes">
+    <blockquote><p>"I liked 3D gaussian environment, it feels real. Also that I have AI where I can ask details… the function walk, it feels so real."</p><footer>Master's student, Robotics, on the 3D lab</footer></blockquote>
+    <blockquote><p>"The system felt educational without being overly simplified."</p><footer>PhD student, on the 3D lab</footer></blockquote>
+    <blockquote><p>"The static photographs made it hard to visualize the movement of components."</p><footer>PhD student, Civil Engineering, on the 2D page</footer></blockquote>
+    <blockquote><p>"Overall, the core concept of this project is amazing!"</p><footer>PhD student, who also reported lag, on the 3D lab</footer></blockquote>
+  </div>
+</section>
+
+<section>
+  <h2>The award and the team</h2>
+  <p class="col">Silver means top 3 of the 10 winners in our group, "AI-Enabled Learning Innovation Cases" (1 Gold, 2 Silver, 3 Bronze, 4 Merit). The prize is a trophy, a certificate and RMB 10,000. The award ceremony was on 8 November 2026 at Peking University, during the Beijing Forum.</p>
+  <p class="col">Team: Zhanat Makhataeva (lead), Vladimir Albrekht (main developer), Kulan Sagadi, Batyr Arystanbekov, Alar Akilbekov. Institute of Smart Systems and Artificial Intelligence (ISSAI), Nazarbayev University, Astana.</p>
+  <p class="col"><a href="https://diidea.pku.edu.cn/competition2026/education_en.html">Official award list on the DI-IDEA site</a></p>
+</section>
+
+<p class="foot">Data: 15 paired participants, Nazarbayev University, August 2026. The inspect view shows "Modern Scientist in a Lab Coat" by restore50 (CC BY).</p>
+
+</main>
+</body>
+</html>
