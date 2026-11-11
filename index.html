@@ -19,18 +19,34 @@ ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; 
 li { padding:1rem 1.2rem; border:2px solid var(--text); border-radius:4px; background:var(--card); }
 a { color:var(--accent); font-weight:700; text-decoration-style:wavy; text-decoration-thickness:1px; text-underline-offset:0.2em; }
 p { margin:0.3rem 0 0; }
+
+main { max-width:62rem; }
+.nav div { max-width:62rem; }
+.lead { margin:-0.6rem 0 1.6rem; max-width:40rem; }
+ul.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(17.5rem,1fr)); gap:1.4rem; }
+ul.cards li { padding:0; overflow:hidden; display:flex; flex-direction:column; transition:transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s; }
+ul.cards li:hover { transform:rotate(-.4deg) translateY(-3px); box-shadow:6px 6px 0 #f6de95; }
+ul.cards a.media { display:block; border-bottom:2px solid var(--text); background:#fff; }
+ul.cards img { display:block; width:100%; height:auto; aspect-ratio:8/5; object-fit:cover; }
+ul.cards .body { padding:0.9rem 1.1rem 1.1rem; }
+ul.cards .kind { font:500 12.5px/1.4 'M PLUS 1 Code',ui-monospace,monospace; color:#e46a2b; }
+ul.cards h2 { margin:0.15rem 0 0; font:600 1.25rem/1.3 'Klee One','Zen Maru Gothic',cursive; }
+ul.cards h2 a { color:var(--text); text-decoration:none; }
+ul.cards h2 a:hover { color:var(--accent); }
+@media (prefers-reduced-motion: reduce) { ul.cards li { transition:none; } ul.cards li:hover { transform:none; } }
 </style>
 </head>
 <body>
 <nav class="nav"><div><a href="https://vladimiralbrekhtccr.github.io/portfolio/">Vladimir Albrekht</a></div></nav>
 <main>
 <h1>Projects</h1>
-<ul>
-<li><a href="3d-manufacturing-lab/">AI-Enhanced 3D Manufacturing Lab</a><p>Silver Award, DI-IDEA 2026 (Peking University). A walkable 3D copy of a real engineering lab with an AI tutor.</p></li>
-<li><a href="issai-vr/">ISSAI VR</a><p>Archery and blade games in WebXR inside a reconstruction of the Nazarbayev University atrium. Made for NU Open House 2026. Works in a desktop browser and on Meta Quest. This copy has no shared score board.</p></li>
-<li><a href="gs-playground/">GS-Playground</a><p>A visual explainer.</p></li>
-<li><a href="vqvae/">VQ-VAE from zero</a><p>The image tokenizer, explained.</p></li>
-<li><a href="gaussiangpt/">GaussianGPT from zero</a><p>Transformers that make 3D scenes.</p></li>
+<p class="lead">Finished things you can open in a browser: project pages, demos and explainers.</p>
+<ul class="cards">
+<li><a class="media" href="3d-manufacturing-lab/" tabindex="-1" aria-hidden="true"><img src="thumbs/lab.jpg" alt="The 3D copy of the production line with numbered stations" width="800" height="500" loading="lazy"></a><div class="body"><span class="kind">Project, Silver Award</span><h2><a href="3d-manufacturing-lab/">AI-Enhanced 3D Manufacturing Lab</a></h2><p>A walkable 3D copy of a real engineering lab, made from one phone video, with an AI tutor. Silver Award at DI-IDEA 2026, Peking University.</p></div></li>
+<li><a class="media" href="issai-vr/" tabindex="-1" aria-hidden="true"><img src="thumbs/issai-vr.jpg" alt="The reconstructed university atrium" width="800" height="500" loading="lazy"></a><div class="body"><span class="kind">WebXR games</span><h2><a href="issai-vr/">ISSAI VR</a></h2><p>Archery and blade games inside a reconstruction of the Nazarbayev University atrium. Made for NU Open House 2026. Desktop browser or Meta Quest.</p></div></li>
+<li><a class="media" href="gs-playground/" tabindex="-1" aria-hidden="true"><img src="thumbs/gs-playground.jpg" alt="Illustration from the GS-Playground explainer" width="800" height="500" loading="lazy"></a><div class="body"><span class="kind">Explainer</span><h2><a href="gs-playground/">GS-Playground</a></h2><p>A visual explainer of the GS-Playground paper: robot simulation built on Gaussian splatting.</p></div></li>
+<li><a class="media" href="vqvae/" tabindex="-1" aria-hidden="true"><img src="thumbs/vqvae.jpg" alt="Illustration of an image codec" width="800" height="500" loading="lazy"></a><div class="body"><span class="kind">Explainer</span><h2><a href="vqvae/">VQ-VAE from zero</a></h2><p>How an image tokenizer turns pictures into discrete tokens, step by step.</p></div></li>
+<li><a class="media" href="gaussiangpt/" tabindex="-1" aria-hidden="true"><img src="thumbs/gaussiangpt.jpg" alt="Illustration of a Gaussian splat scene" width="800" height="500" loading="lazy"></a><div class="body"><span class="kind">Explainer</span><h2><a href="gaussiangpt/">GaussianGPT from zero</a></h2><p>How a transformer can generate 3D scenes made of Gaussian splats, step by step.</p></div></li>
 </ul>
 </main>
 </body>
