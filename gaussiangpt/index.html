@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GaussianGPT, explained from zero</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; max-width: 780px; margin: 2rem auto; padding: 0 1.2rem; line-height: 1.65; color: #1a1a2e; background: #fdfdfb; }
+  h1 { font-size: 1.9rem; line-height: 1.25; }
+  h2 { margin-top: 2.4rem; border-bottom: 2px solid #e8e4da; padding-bottom: .3rem; }
+  img { max-width: 100%; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.08); margin: 1rem 0; }
+  em { color: #555; }
+  code { background: #f0ede6; padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { border: 1px solid #ddd6c8; padding: .45rem .6rem; text-align: left; }
+  th { background: #f0ede6; }
+  hr { border: none; border-top: 1px solid #e0dbd0; margin: 2rem 0; }
+</style></head><body>
+<h1>GaussianGPT, explained from zero</h1>
+<p><em>A first-principles walkthrough of &quot;GaussianGPT: Towards Autoregressive 3D Gaussian Scene Generation&quot; (arXiv:2603.26661, TU Munich). No prior 3D knowledge assumed.</em></p>
+<p>The paper's claim in one sentence: you can generate entire 3D indoor scenes the same way ChatGPT generates text, one token at a time, if you first invent a way to turn a 3D scene into a sequence of tokens. This document explains every step of that &quot;if&quot;: what the scene is made of, how it gets compressed, what vector quantization means, how a 3D grid becomes a 1D sequence, and how the transformer reads it.</p>
+<hr />
+<h2>Part 1. What is the scene made of? Gaussians</h2>
+<p><img src="images/01-splat-scene.webp" alt="A scene is thousands of fuzzy blobs" /></p>
+<p>Forget triangles and meshes. In 3D Gaussian Splatting (3DGS), a scene is just a huge cloud of small, fuzzy, semi-transparent colored blobs floating in space. Each blob is called a Gaussian primitive. Stack enough of them (hundreds of thousands for a room) and from any camera angle they blend into a photorealistic image. Think of it as pointillism in 3D: no single blob looks like anything, but together they form a sofa.</p>
+<p><img src="images/02-gaussian-anatomy.webp" alt="Anatomy of one Gaussian" /></p>
+<p>Each blob is described by a handful of numbers:</p>
+<ul>
+<li><strong>position</strong>: where its center sits in space</li>
+<li><strong>size</strong>: how stretched it is along each axis (a blob can be a sphere, a pancake, or a needle)</li>
+<li><strong>rotation</strong>: how that stretched shape is oriented</li>
+<li><strong>color</strong>: what it looks like</li>
+<li><strong>opacity</strong>: how see-through it is</li>
+</ul>
+<p>So a scene is literally a long list of <code>(position, size, rotation, color, opacity)</code> records. Rendering means splatting each blob onto the screen and blending them front to back. This is fast enough to run in real time, which is why 3DGS took over the field.</p>
+<h2>Part 2. The problem: GPTs eat sequences, scenes are soup</h2>
+<p>A Generative Pre-trained Transformer (GPT) does exactly one thing: given a sequence of discrete tokens, predict the next token. That works beautifully for text because text already is a sequence of discrete symbols with a natural left-to-right order.</p>
+<p>A Gaussian scene violates both requirements at once:</p>
+<ol>
+<li><strong>It is continuous.</strong> Every blob is a bundle of real numbers, not symbols from a finite vocabulary. There is no &quot;word #4096&quot; to predict.</li>
+<li><strong>It has no order.</strong> The blobs are a set, a soup. There is no first blob and no natural &quot;next&quot; blob.</li>
+</ol>
+<p>The whole paper is a recipe for fixing these two problems. Fixing problem 1 is called <em>quantization</em> (Parts 3 to 5). Fixing problem 2 is called <em>serialization</em> (Part 6). Once both are fixed, a stock GPT does the rest.</p>
+<h2>Part 3. Step one: snap the soup onto a grid (voxelization)</h2>
+<p><img src="images/03-voxelization.webp" alt="From gaussians to a sparse voxel grid" /></p>
+<p>First, structure. Lay a regular 3D grid of small cells over the scene, each cell 2.5 cm wide. A 3D cell is called a <em>voxel</em> (volume pixel). Every Gaussian gets assigned to the voxel that contains its center. Two details make this lossless enough:</p>
+<ul>
+<li>The blob's exact position is not thrown away. It is rewritten as a small <strong>offset from the voxel center</strong>, so &quot;position&quot; becomes &quot;which voxel&quot; plus &quot;where inside it&quot;.</li>
+<li>If several blobs land in one voxel, one is randomly kept. At this resolution that costs little detail.</li>
+</ul>
+<p>Crucially, the grid is <strong>sparse</strong>: a room is mostly air, so most voxels are empty and simply do not exist in memory. Only occupied voxels are stored. Each occupied voxel then gets a feature vector: small learned encoder heads take each attribute (size, rotation, color, opacity, offset), embed them, and concatenate the results into one vector per voxel. The scene is now a sparse 3D grid of feature vectors instead of a soup.</p>
+<h2>Part 4. Step two: squeeze it (the sparse 3D convolutional autoencoder)</h2>
+<p><img src="images/04-autoencoder.webp" alt="Encoder, latent grid, decoder" /></p>
+<p>The grid from Part 3 is still enormous. A GPT with a bounded context window cannot afford one token per 2.5 cm voxel. So the paper compresses the grid with an autoencoder, the standard hourglass trick:</p>
+<ul>
+<li>The <strong>encoder</strong> is a sparse 3D Convolutional Neural Network (CNN). It repeatedly downsamples the grid, halving resolution three times, so the latent grid's cells are 20 cm wide. Each surviving latent cell summarizes a whole neighborhood of fine voxels.</li>
+<li>The <strong>decoder</strong> mirrors this, upsampling back to full resolution and predicting both which fine voxels are occupied and what feature vector each one carries. Small decoder heads then convert features back into concrete Gaussian attributes.</li>
+</ul>
+<p>&quot;Sparse&quot; matters again: the convolutions only touch occupied cells, so empty air costs nothing. &quot;Convolutional&quot; matters too: convolutions treat every location identically, so a chair looks the same to the network wherever it stands. That translation equivariance is exactly the right prior for scenes.</p>
+<p>The autoencoder is trained by <strong>re-rendering</strong>: reconstruct the Gaussians, splat them into images from sampled camera poses, and compare against ground-truth images with a color loss and a perceptual loss. An occupancy loss teaches the decoder which voxels should exist at all, and a codebook entropy term (next part) keeps quantization healthy.</p>
+<h2>Part 5. Step three: make it discrete (vector quantization)</h2>
+<p><img src="images/05-vector-quantization.webp" alt="Classic vector quantization: snap to the nearest codebook entry" /></p>
+<p>After the encoder, each latent cell holds a continuous vector. Still not tokens. <strong>Vector Quantization (VQ)</strong> is the classic fix: maintain a <em>codebook</em>, a fixed palette of, say, 4,096 reference vectors, and replace each continuous vector with the index of its nearest codebook entry. The vector &quot;snaps&quot; to the closest palette color. Now every latent cell is described by a single integer, and integers from a finite vocabulary are exactly what a GPT eats. This is the same trick image models like VQGAN use to turn pictures into token grids.</p>
+<p>Classic VQ has a known disease: <strong>codebook collapse</strong>. The nearest-neighbor lookup is not differentiable, gradients reach the codebook only through tricks, and in practice the model ends up using a tiny fraction of its palette while the rest of the entries go stale.</p>
+<p><img src="images/06-lfq-bits.webp" alt="Lookup-free quantization: keep only the sign" /></p>
+<p>The paper uses <strong>Lookup-Free Quantization (LFQ)</strong> instead, and it is delightfully simple. Drop the learned codebook entirely. Make the encoder output a short vector, then quantize each dimension to a single bit by its sign: positive becomes 1, negative becomes 0. A 12-dimensional output gives a 12-bit string, and that bit string <em>is</em> the token index. The codebook of 4,096 entries is just the set of all 12-bit numbers; nothing is looked up and nothing can go stale. An entropy loss during training pushes the encoder to actually spread its outputs across many different bit patterns, so the whole vocabulary gets used.</p>
+<p><strong>Where we stand.</strong> A continuous scene has become a sparse, coarse 3D grid where every occupied cell carries one integer from a fixed vocabulary. Problem 1 from Part 2 is solved.</p>
+<h2>Part 6. Step four: unroll the grid into a sequence (serialization)</h2>
+<p><img src="images/07-serialization.webp" alt="Column-wise scan turns the 3D grid into a 1D sequence" /></p>
+<p>Problem 2 remains: a transformer needs a 1D sequence, and we have a 3D grid. <em>Serialization</em> is choosing a visiting order for the occupied cells. GaussianGPT uses the most boring order imaginable, plain <code>xyz</code> traversal: at each floor position, walk the full vertical column from bottom to top, then step to the next floor position, like reading a page column by column. Fancy alternatives exist (Hilbert curves, Z-order curves) that keep spatial neighbors closer together in the sequence, and the paper tests them. The boring order wins. Part 7 explains why it can afford to.</p>
+<p>Scenes grow cubically with size, so the model never sees a whole scene at once. It works on fixed-size <strong>chunks</strong> (a few meters across), and each voxel's position index is counted <em>relative to its chunk</em>, not in world coordinates. That keeps the vocabulary small and lets the same model generalize across positions and scenes.</p>
+<p><img src="images/08-interleaved-tokens.webp" alt="Interleaved position and feature tokens" /></p>
+<p>Now, what exactly is a token? Each occupied cell contributes <strong>two</strong> tokens, interleaved:</p>
+<ul>
+<li>a <strong>position token</strong> <code>P</code>: which cell index (within the chunk) is occupied next</li>
+<li>a <strong>feature token</strong> <code>F</code>: the LFQ code of that cell, i.e. what the contents look like</li>
+</ul>
+<p>So the sequence reads <code>BOS, P1, F1, P2, F2, ..., EOS</code>, where begin-of-sequence (BOS) and end-of-sequence (EOS) are ordinary boundary markers. Empty cells cost nothing; they are simply skipped, and the gaps between consecutive position indices encode the emptiness for free.</p>
+<p>The two token types get <strong>separate vocabularies and separate output heads</strong>. At even steps the model predicts from the position vocabulary only, at odd steps from the feature vocabulary only, with invalid entries masked out. This decoupling stops geometry and appearance from competing over the same indices, and it lets chunk size and codebook size be chosen independently.</p>
+<h2>Part 7. The secret ingredient: 3D rotary positional embeddings</h2>
+<p><img src="images/09-3d-rope.webp" alt="Far in the sequence, close in space" /></p>
+<p>Here is the flaw the serialization introduced. Two voxels can be direct neighbors in space yet end up hundreds of tokens apart in the sequence (adjacent columns, same height). A standard transformer only knows sequence positions, so it would have to <em>learn</em> that token 7 and token 312 are actually touching. That is a terrible use of model capacity.</p>
+<p>Rotary Positional Embedding (RoPE) is the standard way modern language models encode position: each token's query and key vectors get rotated by an angle proportional to the token's position, which makes attention scores depend on the <em>relative distance</em> between tokens. GaussianGPT keeps the mechanism but swaps the input: instead of rotating by sequence index, it rotates by the voxel's actual <code>(x, y, z)</code> coordinates. Attention then measures <em>spatial</em> offsets directly. Two spatially adjacent voxels attend to each other as neighbors no matter how far apart the serialization put them.</p>
+<p>One more nicety: each cell's <code>P</code> token and <code>F</code> token share the same coordinates, so a fourth rotary dimension encodes <em>token type</em>, letting the model tell &quot;where&quot; tokens from &quot;what&quot; tokens inside the same unified attention.</p>
+<p>This is also why the boring <code>xyz</code> ordering beats Hilbert curves in the ablation (Table 2 of the paper). The space-filling curves exist to smuggle spatial locality into the 1D order, but 3D RoPE already delivers locality directly inside attention. With locality handled, the serialization only needs to be <em>predictable</em>, and a rigid column scan is easier to predict than a recursive fractal path.</p>
+<h2>Part 8. The payoff: generation is just next-token prediction</h2>
+<p><img src="images/10-generation-loop.webp" alt="One token at a time, a room assembles" /></p>
+<p>The transformer itself is deliberately unexciting: a decoder-only GPT-2 style model (built on the nanochat codebase) with query-key normalization and the Muon optimizer, trained with plain teacher-forced cross-entropy: predict token <em>i</em> given tokens 1 through <em>i−1</em>. That ordinariness is the point. All the 3D-specific intelligence lives in the representation, so a battle-tested language-model recipe transfers unchanged.</p>
+<p>Generation at inference time:</p>
+<ol>
+<li>Start from <code>BOS</code>.</li>
+<li>Sample a position token: &quot;the next occupied cell is here.&quot;</li>
+<li>Sample a feature token: &quot;and it looks like this.&quot;</li>
+<li>Repeat until <code>EOS</code>, then hand all <code>(position, code)</code> pairs to the frozen decoder from Part 4, which turns them back into actual Gaussians you can render.</li>
+</ol>
+<p>Because each position token names a concrete cell, the sampler can <strong>mask</strong> cells that are already filled or would violate the scan order. Illegal scenes are unsampleable by construction, something diffusion models cannot promise.</p>
+<p>And now the features fall out for free, all from the same trained model with no extra machinery:</p>
+<ul>
+<li><strong>Completion.</strong> Serialize the visible part of a scene, feed it as a prompt, and let the model continue. Same trick as prompting a language model. Different samples give different but consistent completions of the same partial room.</li>
+<li><strong>Controllability.</strong> Sampling temperature turns scene diversity up or down, exactly as in text.</li>
+</ul>
+<p><img src="images/11-outpainting.webp" alt="Outpainting with a sliding window" /></p>
+<ul>
+<li><strong>Unbounded scenes.</strong> The model was trained on fixed chunks, but generation can slide: keep a window of recently generated columns as context, predict the next column, shift, repeat. The paper grows 12 m × 12 m apartments this way from a model that never saw anything that large, with floors, walls, and style staying coherent across chunk boundaries. If a sampled column comes back empty, it is simply resampled a few times, a cheap trick to keep large scenes connected.</li>
+</ul>
+<h2>Part 9. Does it work?</h2>
+<p>On unconditional chair generation (the PhotoShape benchmark), GaussianGPT beats the diffusion baselines DiffRF and L3DG on image-quality metrics by a wide margin and covers the shape distribution better, while staying competitive on geometric fidelity (Table 1 of the paper). Qualitatively its samples avoid the stray floating blobs that diffusion outputs tend to leave, likely because the model makes an explicit yes/no occupancy decision per cell instead of denoising everything everywhere.</p>
+<p>On full scenes there is no established benchmark, so the evidence is qualitative: coherent furnished rooms, diverse completions from the same prefix, and the large outpainted apartments above. A ScanNet++ appendix shows real-world scans work too, though autoencoder fidelity becomes the bottleneck there.</p>
+<h2>Cheat sheet: the language-model dictionary</h2>
+<table>
+<thead>
+<tr>
+<th>Language modeling</th>
+<th>GaussianGPT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>character/byte</td>
+<td>one Gaussian blob</td>
+</tr>
+<tr>
+<td>tokenizer</td>
+<td>voxelize → sparse 3D CNN encoder → LFQ</td>
+</tr>
+<tr>
+<td>vocabulary</td>
+<td>position indices + 4,096 LFQ codes</td>
+</tr>
+<tr>
+<td>token</td>
+<td>interleaved pair: where (<code>P</code>), what (<code>F</code>)</td>
+</tr>
+<tr>
+<td>detokenizer</td>
+<td>sparse 3D CNN decoder → Gaussians → splatting</td>
+</tr>
+<tr>
+<td>reading order</td>
+<td>column-wise <code>xyz</code> scan over chunks</td>
+</tr>
+<tr>
+<td>positional encoding</td>
+<td>RoPE over real <code>(x, y, z)</code> + token type</td>
+</tr>
+<tr>
+<td>prompting</td>
+<td>partial scene as prefix</td>
+</tr>
+<tr>
+<td>long-context generation</td>
+<td>sliding-window outpainting</td>
+</tr>
+</tbody>
+</table>
+<p>The one-line takeaway: <strong>quantize, serialize, then trust the transformer.</strong> Everything 3D-specific is squeezed into the tokenizer and the positional encoding; the generative model itself is a language model that happens to speak &quot;room&quot;.</p>
+
+</body></html>
