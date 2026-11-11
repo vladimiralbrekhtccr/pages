@@ -33,6 +33,12 @@ ul.cards .kind { font:500 12.5px/1.4 'M PLUS 1 Code',ui-monospace,monospace; col
 ul.cards h2 { margin:0.15rem 0 0; font:600 1.25rem/1.3 'Klee One','Zen Maru Gothic',cursive; }
 ul.cards h2 a { color:var(--text); text-decoration:none; }
 ul.cards h2 a:hover { color:var(--accent); }
+/* the whole card is the link: the title link stretches over the card */
+ul.cards li { position:relative; cursor:pointer; }
+ul.cards h2 a::after { content:''; position:absolute; inset:0; }
+ul.cards li:hover h2 a { color:var(--accent); }
+ul.cards h2 a:focus-visible { outline:none; }
+ul.cards li:focus-within { outline:3px solid #e46a2b; outline-offset:3px; }
 @media (prefers-reduced-motion: reduce) { ul.cards li { transition:none; } ul.cards li:hover { transform:none; } }
 </style>
 </head>
