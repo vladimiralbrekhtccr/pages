@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FRP 2026: AI Engineering track</title>
+<meta name="description" content="How we ran the AI Engineering track of the ISSAI Fall Research Program 2026: online IDE, Docker workspaces, a simulated Slurm GPU queue, OpenCode with DeepSeek, lecture slides and student projects.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+1+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Same style as the portfolio (vladimiralbrekhtccr.github.io/portfolio): cream paper, brown ink,
+   indigo + orange accents, Zen Maru Gothic text, Klee One headings, dark 2px outlines. Light only, by choice. */
+:root {
+  color-scheme: light;
+  --bg: #fbf7ee; --card: #fffdf8; --text: #3a2a1f; --text-2: #5b4736; --text-3: #8d7663;
+  --accent: #3b4ea8; --accent-2: #e46a2b; --yellow: #f6de95; --sand: #fbecc4; --rule: #e6dccb;
+  --bar2d: #e8c98a; --bar3d: #3b4ea8;
+  --f-body: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', system-ui, sans-serif;
+  --f-hand: 'Klee One', 'Zen Maru Gothic', cursive;
+  --f-mono: 'M PLUS 1 Code', ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; color: var(--text-2); font: 400 16.5px/1.72 var(--f-body);
+  background: radial-gradient(1200px 500px at 85% -10%, #fbe6b9 0%, transparent 60%), radial-gradient(900px 400px at -10% 20%, #fde3d3 0%, transparent 55%), var(--bg); background-color: var(--bg); }
+.nav { border-bottom: 2px solid var(--text); background: color-mix(in srgb, var(--bg) 92%, transparent); }
+.nav div { max-width: 62rem; margin: 0 auto; padding: 0.7rem 1.25rem; display: flex; gap: 1.25rem; flex-wrap: wrap; font: 500 14px/1.4 var(--f-mono); }
+.nav a { color: var(--text); text-decoration: none; }
+.nav a:hover { color: var(--accent); }
+main { max-width: 62rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; display: flex; flex-direction: column; gap: 3.25rem; }
+section, header { display: flex; flex-direction: column; gap: 1.1rem; }
+.col { max-width: 46rem; }
+h1, h2 { font-family: var(--f-hand); color: var(--text); text-wrap: balance; margin: 0; font-weight: 600; }
+h1 { font-size: clamp(2rem, 5.4vw, 2.9rem); line-height: 1.15; }
+h2 { font-size: 1.55rem; line-height: 1.3; padding-bottom: 0.4rem; border-bottom: 2px solid var(--text); }
+p { margin: 0; }
+strong { color: var(--text); }
+a { color: var(--accent); text-decoration-style: wavy; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+a:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 3px; border-radius: 4px; }
+img { max-width: 100%; height: auto; display: block; }
+.kicker { font-family: var(--f-hand); font-weight: 600; color: var(--accent-2); font-size: 15px; letter-spacing: 0.5px; }
+.award { align-self: flex-start; font-family: var(--f-hand); font-weight: 600; font-size: 1.1rem; color: var(--text); background: var(--yellow); border: 2px solid var(--text); border-radius: 999px; padding: 0.15rem 0.9rem; }
+.lede { font-size: 19px; line-height: 1.6; text-wrap: pretty; }
+.links { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.links a { font: 500 13.5px/1 var(--f-mono); text-decoration: none; color: var(--text); border: 2px solid var(--text); border-radius: 999px; padding: 0.6rem 0.95rem; background: var(--card); }
+.links a:hover { background: var(--sand); }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1.25rem; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+figure img { border-radius: 4px; border: 2px solid var(--text); width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #fff; }
+figure.wide img { aspect-ratio: auto; background: #ffffff; padding: 0.75rem; }
+figcaption { color: var(--text-3); font-size: 0.92rem; }
+video { width: 100%; max-width: 54rem; aspect-ratio: 16 / 9; border-radius: 4px; border: 2px solid var(--text); background: #000; box-shadow: 7px 7px 0 var(--yellow); }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+caption { text-align: left; color: var(--text-3); font-size: 0.92rem; padding-bottom: 0.4rem; }
+th, td { text-align: left; padding: 0.55rem 0.9rem 0.55rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th { font-weight: 700; color: var(--text); font-size: 0.92rem; border-bottom: 2px solid var(--text); white-space: nowrap; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+td.big { font-family: var(--f-hand); font-weight: 600; font-size: 1.2rem; white-space: nowrap; color: var(--text); }
+.note { color: var(--text-3); }
+ol.steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1.25rem; counter-reset: s; }
+ol.steps li { counter-increment: s; }
+ol.steps li::before { content: counter(s); font-family: var(--f-hand); font-weight: 600; font-size: 1.05rem; color: var(--text); background: var(--yellow); border: 2px solid var(--text); border-radius: 50%; width: 2rem; height: 2rem; display: grid; place-items: center; margin-bottom: 0.4rem; }
+ol.steps strong { display: block; }
+ul { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.bars { display: grid; grid-template-columns: 6.8rem 1fr; gap: 0.55rem 0.9rem; align-items: center; }
+.bars .lab { font-weight: 700; color: var(--text); }
+.track { display: flex; flex-direction: column; gap: 3px; }
+.bar { height: 0.8rem; border-radius: 2px; min-width: 2px; position: relative; }
+.bar span { position: absolute; left: calc(100% + 0.4rem); top: 50%; transform: translateY(-50%); font: 400 0.82rem var(--f-mono); color: var(--text-3); }
+.b2 { background: var(--bar2d); } .b3 { background: var(--bar3d); }
+.barbox { padding-right: 2.2rem; }
+.legend { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.92rem; color: var(--text-3); }
+.legend i { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 2px; margin-right: 0.4rem; vertical-align: -1px; }
+.quotes { max-width: 52rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1.25rem; }
+blockquote { margin: 0; padding: 0.9rem 1.1rem; border: 2px solid var(--text); border-radius: 4px; background: var(--card); display: flex; flex-direction: column; gap: 0.4rem; }
+blockquote p { font-family: var(--f-hand); font-size: 1.08rem; line-height: 1.5; color: var(--text); }
+blockquote footer { color: var(--text-3); font-size: 0.9rem; }
+.foot { color: var(--text-3); font-size: 0.92rem; border-top: 2px solid var(--text); padding-top: 1.25rem; }
+
+/* FRP page additions */
+.speech { max-width: 46rem; padding: 1.3rem 1.5rem; border: 2px solid var(--text); border-radius: 4px; background: var(--card); box-shadow: 7px 7px 0 var(--yellow); display: flex; flex-direction: column; gap: 0.9rem; }
+.speech ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.speech .sig { font-family: var(--f-hand); font-weight: 600; color: var(--text); }
+code, pre { font-family: var(--f-mono); font-size: 0.88rem; }
+code { background: var(--sand); padding: 0.05rem 0.35rem; border-radius: 3px; color: var(--text); }
+pre { margin: 0; background: #2f241b; color: #fbecc4; padding: 0.9rem 1.1rem; border-radius: 4px; border: 2px solid var(--text); overflow-x: auto; line-height: 1.55; }
+pre .c { color: #c9b38f; }
+.diagram { max-width: 54rem; }
+.diagram svg { width: 100%; height: auto; display: block; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 1.25rem; }
+.box { border: 2px solid var(--text); border-radius: 4px; background: var(--card); padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.box h3 { margin: 0; font: 600 1.15rem/1.3 var(--f-hand); color: var(--text); }
+.box .tag { font: 500 12.5px/1.4 var(--f-mono); color: var(--accent-2); }
+ul.proj { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1.25rem; }
+ul.proj li { border: 2px solid var(--text); border-radius: 4px; background: var(--card); overflow: hidden; display: flex; flex-direction: column; }
+ul.proj img { width: 100%; aspect-ratio: 8 / 5; object-fit: cover; object-position: top; border-bottom: 2px solid var(--text); background: #fff; }
+ul.proj .noimg { aspect-ratio: 8 / 5; border-bottom: 2px solid var(--text); background: var(--sand); display: grid; place-items: center; font: 600 1.3rem var(--f-hand); color: var(--text-3); }
+ul.proj .body { padding: 0.85rem 1rem 1rem; display: flex; flex-direction: column; gap: 0.45rem; flex: 1; }
+ul.proj h3 { margin: 0; font: 600 1.15rem/1.3 var(--f-hand); color: var(--text); }
+ul.proj .links { margin-top: auto; gap: 0.4rem; }
+ul.proj .links a { padding: 0.4rem 0.7rem; font-size: 12.5px; }
+.slides td a { font-weight: 700; }
+</style>
+</head>
+<body>
+<nav class="nav"><div><a href="https://vladimiralbrekhtccr.github.io/portfolio/">Vladimir Albrekht</a><a href="https://vladimiralbrekhtccr.github.io/projects/">Projects</a></div></nav>
+<main>
+
+<header>
+  <p class="kicker">ISSAI Fall Research Program 2026, Nazarbayev University, 24–31 October</p>
+  <h1>FRP 2026: AI Engineering track</h1>
+  <p class="lede col">20 high-school students, 8 days, one AI agent each. How we ran the track, what the students built, and the lecture slides.</p>
+  <p class="links">
+    <a href="#setup">How it was set up</a>
+    <a href="#projects">Student projects</a>
+    <a href="#slides">Lecture slides</a>
+    <a href="#video">Program video</a>
+  </p>
+</header>
+
+<section>
+  <h2>FRP in my words</h2>
+  <div class="speech">
+    <p>Around 30 students applied for the program, and 20 of them were in our AI Engineering track. There we wanted to teach students how to use AI agents to build a project or do research, and how to share that work. I would say it is what we do day to day, only at a smaller scale in the number of GPUs and in the capabilities of the AI agents.</p>
+    <p>Knowing that I would need to switch context between all of them during the program, I came up with these bricks:</p>
+    <ol>
+      <li><strong>Online IDE:</strong> no SSH connection needed, and some students could easily work on their tablets.</li>
+      <li><strong>Docker isolation with a "simulated Slurm":</strong> I did not have to worry about data, RAM or GPU management.</li>
+      <li><strong>Integrated code assistant:</strong> students could iterate fast and, instead of waiting for me to fix something, try to fix it with the assistant.</li>
+    </ol>
+    <p>The working pipeline: one student chooses a prepared idea to implement, and we iterate on it for 8 days. Repeat for n students.</p>
+    <p>What helped a lot during the program was the students' digital history of what they were doing. How? It allowed me to analyse a) where they struggle, b) what their current progress is, and c) how they use AI agents.</p>
+    <p>Without direct access to each prompt and the history of what they were doing, it would take me a few hours per student each day. That is simply impossible, because there were too many of them.</p>
+    <p>With this pipeline, at the end of each day I could analyse the students' progress with AI agents and prepare the next day's plans and tasks. For some students I tested video explanations of the things they were doing, like "how embeddings work for your project". It went pretty well, and some students really liked this way of explaining, because it was personalised and used text, audio and visuals.</p>
+    <p>If I could go back and change some parts, I would:</p>
+    <ol>
+      <li>Find a way to replace myself more with <code>vladimir_agent</code>, as I was often the bottleneck when 3 students had problems at once and I had to switch between them.</li>
+      <li>Use peer learning more actively. During this FRP I noticed how much it helped students, compared with students who worked alone.</li>
+    </ol>
+    <p>It was quite an interesting experience. Thanks to the students for their good work.</p>
+    <p class="sig">Vladimir Albrekht</p>
+  </div>
+</section>
+
+<section>
+  <h2>The track in numbers</h2>
+  <div class="tablewrap col">
+    <table>
+      <tbody>
+        <tr><td class="big">20 students</td><td>in the AI Engineering track, high-school students from Kazakhstan and abroad.</td></tr>
+        <tr><td class="big">8 days</td><td>24–31 October 2026: six lecture days, then a Demo Day with 3-minute talks.</td></tr>
+        <tr><td class="big">30 workspaces</td><td>one isolated Docker container each, opened in any browser.</td></tr>
+        <tr><td class="big">16 V100</td><td>GPUs for student training jobs, shared through a small queue.</td></tr>
+        <tr><td class="big">~20 H100</td><td>GPUs for the class models: the coding model, speech and images.</td></tr>
+        <tr><td class="big">11 projects</td><td>with a public page, demo or paper, linked below.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="setup">
+  <h2>How it was set up</h2>
+  <p class="col">Every student had the same workspace: a browser tab with VS Code and an AI agent, an isolated container behind it, and a GPU queue for training. Every evening the workspaces were scanned and each student got a plan for the next day.</p>
+  <figure class="diagram">
+    <svg viewBox="0 0 900 430" role="img" aria-label="Diagram: a student opens a link in any browser and gets VS Code with an AI agent inside an isolated Docker container. The agent talks to the class models on H100 GPUs. The sbatch command sends training jobs to a GPU queue on V100 GPUs. Every evening the workspace is scanned, AI agents summarise each student's progress, and the student gets a plan for the next day.">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a2a1f"/></marker>
+      </defs>
+      <style>
+        .bx { fill: #fffdf8; stroke: #3a2a1f; stroke-width: 2; }
+        .hl { fill: #fbecc4; stroke: #3a2a1f; stroke-width: 2; }
+        .sea { fill: none; stroke: #3a2a1f; stroke-width: 2; stroke-dasharray: 7 5; }
+        .ln { stroke: #3a2a1f; stroke-width: 2; fill: none; }
+        .t { font: 600 17px 'Klee One', 'Zen Maru Gothic', cursive; fill: #3a2a1f; }
+        .s { font: 400 13.5px 'Zen Maru Gothic', system-ui, sans-serif; fill: #5b4736; }
+        .m { font: 500 12.5px 'M PLUS 1 Code', ui-monospace, monospace; fill: #e46a2b; }
+      </style>
+      <rect class="bx" x="12" y="40" width="170" height="92" rx="6"/>
+      <text class="t" x="97" y="74" text-anchor="middle">Student</text>
+      <text class="s" x="97" y="96" text-anchor="middle">laptop, tablet</text>
+      <text class="s" x="97" y="114" text-anchor="middle">or phone</text>
+
+      <rect class="sea" x="232" y="18" width="320" height="232" rx="8"/>
+      <text class="m" x="392" y="240" text-anchor="middle">Docker seat: own container, 4 CPU, 16 GB</text>
+      <rect class="hl" x="252" y="36" width="280" height="62" rx="6"/>
+      <text class="t" x="392" y="62" text-anchor="middle">VS Code in the browser</text>
+      <text class="s" x="392" y="84" text-anchor="middle">one link + password, no SSH</text>
+      <rect class="bx" x="252" y="122" width="130" height="86" rx="6"/>
+      <text class="t" x="317" y="152" text-anchor="middle">OpenCode</text>
+      <text class="s" x="317" y="174" text-anchor="middle">/ask /plan /build</text>
+      <text class="s" x="317" y="192" text-anchor="middle">/check /fix /save</text>
+      <rect class="bx" x="402" y="122" width="130" height="86" rx="6"/>
+      <text class="t" x="467" y="152" text-anchor="middle">sbatch</text>
+      <text class="s" x="467" y="174" text-anchor="middle">squeue, scancel</text>
+      <text class="s" x="467" y="192" text-anchor="middle">like Slurm</text>
+
+      <rect class="bx" x="618" y="30" width="270" height="92" rx="6"/>
+      <text class="t" x="753" y="60" text-anchor="middle">Class AI models</text>
+      <text class="s" x="753" y="82" text-anchor="middle">DeepSeek-V4.1-Flash, speech,</text>
+      <text class="s" x="753" y="100" text-anchor="middle">images · ~20 H100 GPUs</text>
+      <rect class="bx" x="618" y="150" width="270" height="92" rx="6"/>
+      <text class="t" x="753" y="180" text-anchor="middle">GPU queue</text>
+      <text class="s" x="753" y="202" text-anchor="middle">each job: a new container,</text>
+      <text class="s" x="753" y="220" text-anchor="middle">1 V100, 15–30 minutes</text>
+
+      <path class="ln" d="M182 70 H 250" marker-end="url(#ar)"/>
+      <path class="ln" d="M532 76 H 616" marker-end="url(#ar)"/>
+      <path class="ln" d="M532 180 C 570 186, 590 194, 616 196" marker-end="url(#ar)"/>
+
+      <rect class="bx" x="232" y="300" width="190" height="78" rx="6"/>
+      <text class="t" x="327" y="328" text-anchor="middle">Evening scan</text>
+      <text class="s" x="327" y="350" text-anchor="middle">files, git commits,</text>
+      <text class="s" x="327" y="366" text-anchor="middle">prompts, GPU jobs</text>
+      <rect class="bx" x="460" y="300" width="200" height="78" rx="6"/>
+      <text class="t" x="560" y="328" text-anchor="middle">AI agents summarise</text>
+      <text class="s" x="560" y="350" text-anchor="middle">where stuck, progress,</text>
+      <text class="s" x="560" y="366" text-anchor="middle">how they use agents</text>
+      <rect class="hl" x="698" y="300" width="190" height="78" rx="6"/>
+      <text class="t" x="793" y="328" text-anchor="middle">Next-day plan</text>
+      <text class="s" x="793" y="350" text-anchor="middle">for each student,</text>
+      <text class="s" x="793" y="366" text-anchor="middle">checked by the mentor</text>
+
+      <path class="ln" d="M327 250 V 298" marker-end="url(#ar)"/>
+      <path class="ln" d="M422 339 H 458" marker-end="url(#ar)"/>
+      <path class="ln" d="M660 339 H 696" marker-end="url(#ar)"/>
+      <path class="ln" d="M793 378 V 412 H 97 V 134" marker-end="url(#ar)"/>
+      <text class="m" x="450" y="406" text-anchor="middle">next morning</text>
+    </svg>
+  </figure>
+
+  <div class="grid3">
+    <div class="box">
+      <span class="tag">1 · Online IDE</span>
+      <h3>VS Code in the browser</h3>
+      <p>Each student had code-server (VS Code in a browser tab) at a personal link with a password. They got both on a printed card with a QR code. Nothing to install, no SSH: a laptop, a tablet or even a phone was enough.</p>
+    </div>
+    <div class="box">
+      <span class="tag">2 · Docker isolation</span>
+      <h3>One container per student</h3>
+      <p>Every workspace was its own container: 4 CPUs, 16 GB of RAM, no root, a read-only system and a home folder that survived restarts. Students could not see each other's files. A watchdog stopped a workspace if its folder grew past 50 GB.</p>
+    </div>
+    <div class="box">
+      <span class="tag">3 · Simulated Slurm</span>
+      <h3>GPU jobs like on a real cluster</h3>
+      <p><code>sbatch</code>, <code>squeue</code> and <code>scancel</code> worked inside the workspace. Each job started a fresh container with 1 V100, 6 CPUs and 24 GB of RAM: 15 minutes by default, 30 at most, 1 running and 2 waiting jobs per student. Students with nothing running went first.</p>
+    </div>
+    <div class="box">
+      <span class="tag">4 · Code assistant</span>
+      <h3>OpenCode with DeepSeek</h3>
+      <p>OpenCode ran in every workspace on DeepSeek-V4.1-Flash, served with vLLM on two 8×H100 nodes. Claude Code and Codex were installed too, pointed at the same class model. A proxy identified each workspace, so students never held a model key.</p>
+    </div>
+  </div>
+
+  <pre><span class="c"># inside a workspace: train on a GPU, then read the log</span>
+sbatch --wrap "python3 train.py"
+squeue                      <span class="c"># your job, and others as "(another student)"</span>
+cat ~/work/jobs/&lt;id&gt;.log</pre>
+
+  <div class="tablewrap col">
+    <table>
+      <caption>The agent commands every student used, in this order</caption>
+      <thead><tr><th>Command</th><th>What the agent does</th></tr></thead>
+      <tbody>
+        <tr><td><code>/ask</code></td><td>Asks up to 5 questions about the idea. No code yet.</td></tr>
+        <tr><td><code>/tasks</code></td><td>Writes the tasks for the whole week, to show the mentor.</td></tr>
+        <tr><td><code>/plan</code></td><td>Writes the goal, the input, how to check it and the limits, then a short plan.</td></tr>
+        <tr><td><code>/build</code></td><td>Builds only the next small step.</td></tr>
+        <tr><td><code>/check</code></td><td>Tests its own work and shows proof, not just "done".</td></tr>
+        <tr><td><code>/fix</code></td><td>Fixes what the student saw, from a description or the red error.</td></tr>
+        <tr><td><code>/save</code></td><td>A git checkpoint, pushed to GitHub when connected.</td></tr>
+        <tr><td><code>/share</code></td><td>A public link to the page that anyone can open.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="col">The agents also had skills for web search, checking a page in a real browser, image generation, embeddings, face tracking, speech, and a small RL training example (GRPO). Speech recognition and text-to-speech (Whisper large-v3-turbo, GigaAM for Kazakh, OmniVoice) and an image model ran on the H100s as class services.</p>
+</section>
+
+<section>
+  <h2>The daily loop</h2>
+  <ol class="steps">
+    <li><strong>Day: build with the agent</strong>Each student worked on their own project with OpenCode, and asked the mentor when stuck after trying alone first.</li>
+    <li><strong>Evening: scan every workspace</strong>A read-only script collected the day: changed files, git commits, the prompts sent to OpenCode, Claude Code and Codex, GPU jobs and published pages.</li>
+    <li><strong>Night: plan the next day</strong>AI agents summarised where each student was stuck, their progress and how they used the agent. Then they drafted a plan for every student or team. Plans went into a workspace only after the mentor checked them.</li>
+  </ol>
+  <p class="col">Some students also got short personalised explainer videos, 2–3 minutes each, made only from their own project files. Topics included how embeddings find similar songs, whether an RL agent can beat the rule it learned from, and how to forecast tomorrow's solar output. The videos used drawn characters and synthetic voices. They stay private, as they are personal to each student.</p>
+</section>
+
+<section>
+  <h2>Sharing the work</h2>
+  <p class="col">Every project had to end with something other people can open. Students got:</p>
+  <ul class="col">
+    <li>A one-command public link for any page in the workspace, for classmates, parents and Demo Day.</li>
+    <li>Guides and short screen videos for connecting GitHub and Hugging Face, and a project-page template for GitHub Pages ("only real numbers").</li>
+    <li>A paper kit: a LaTeX template for Overleaf, and for about 12 projects a personal paper guide with checked references.</li>
+    <li>A Demo Day template: 7 slides for a 3-minute talk.</li>
+  </ul>
+</section>
+
+<section id="projects">
+  <h2>Student projects</h2>
+  <p class="col">Projects with a public page, demo or paper. All of them were built by the students with AI agents during the 8 days.</p>
+  <ul class="proj">
+    <li><img src="img/saq.jpg" style="object-fit:contain;background:#f3f8fb" alt="SAQ project page title" loading="lazy" width="900" height="306"><div class="body"><h3>SAQ: scam message detection</h3><p>Spots the warning signs of scam messages in Kazakh and Russian and explains why. A fine-tuned XLM-R model. Team of two.</p><p class="links"><a href="https://dilya265.github.io/Saq/">Page</a><a href="https://huggingface.co/wiiqliw/saq-scam-xlmr">Model</a></p></div></li>
+    <li><img src="img/taste.jpg" alt="Taste Engine: rated songs" loading="lazy" width="900" height="504"><div class="body"><h3>Taste Engine</h3><p>Rate a few songs, get new songs that sound like them, found by audio embeddings.</p><p class="links"><a href="https://fleshwater1876.github.io/taste-engine-page/">Page</a><a href="https://fleshwater1876.github.io/taste-engine-page/demo/">Demo</a><a href="https://fleshwater1876.github.io/taste-engine-page/paper.pdf">Paper</a></p></div></li>
+    <li><img src="img/solar.jpg" alt="Bar chart of daily forecast error by method" loading="lazy" width="900" height="482"><div class="body"><h3>Solar Yield Predictor</h3><p>A next-day output forecast for a real solar plant, tested on a held-out month against the plant's own plan.</p><p class="links"><a href="https://zhureswe.github.io/solar-yield-predictor/">Page</a><a href="https://zhureswe.github.io/solar-yield-predictor/solar/">Demo</a><a href="https://zhureswe.github.io/solar-yield-predictor/paper.pdf">Paper</a></p></div></li>
+    <li><img src="img/oynova.jpg" alt="Oynova game: tap the white crystal" loading="lazy" width="900" height="563"><div class="body"><h3>Oynova</h3><p>A voice-led 3D game, in the browser and in VR, that teaches young children Kazakh color words. Team of two.</p><p class="links"><a href="https://arqkls.github.io/oynova/">Play</a></p></div></li>
+    <li><img src="img/brainrot2.jpg" alt="Cure Brainrot quiz settings" loading="lazy" width="900" height="482"><div class="body"><h3>Cure Brainrot: quiz first</h3><p>The short-video feed opens only after enough right answers from a bank of 3,090 school questions.</p><p class="links"><a href="https://amiralirakymzhan789-max.github.io/cure-brainrot/">Page</a><a href="https://amiralirakymzhan789-max.github.io/cure-brainrot/demo/">Demo</a></p></div></li>
+    <li><div class="noimg">Chrome extension</div><div class="body"><h3>Cure Brainrot: browser extension</h3><p>Counts time on TikTok, YouTube Shorts and Instagram Reels, closes them at a daily limit, and gives 20 more minutes for a passed quiz. Team of two.</p><p class="links"><a href="https://ajsa35792-byte.github.io/cure-brainrot-page/">Page, paper and demo video</a></p></div></li>
+    <li><img src="img/ivypath.jpg" alt="ivypath.io university requirements page" loading="lazy" width="900" height="482"><div class="body"><h3>ivypath.io</h3><p>Requirements, costs and deadlines of 734 universities in 35 countries, with a score check and an AI helper.</p><p class="links"><a href="https://pbm4cz5cdd-ui.github.io/ivypath-frp2026/">Page</a></p></div></li>
+    <li><img src="img/catalog.jpg" alt="Catalog of short school videos" loading="lazy" width="900" height="563"><div class="body"><h3>School topics as 1-minute videos</h3><p>Short AI-made lesson videos in Russian, English and Kazakh, with an AI checker for the scripts.</p><p class="links"><a href="https://basiggs.github.io/frp-2026/projects/diar-page/">Page</a><a href="https://basiggs.github.io/frp-2026/projects/school-video/pages/?v=2">Videos</a></p></div></li>
+    <li><img src="img/tetris.jpg" alt="Tetris RL replay viewer" loading="lazy" width="900" height="525"><div class="body"><h3>Tetris RL Arena</h3><p>Reinforcement learning agents for a Tetris game the student wrote before the program, compared with a hand-written player on held-out seeds.</p><p class="links"><a href="https://yerkenje.github.io/tetris-rl-arena-page/">Page</a><a href="https://yerkenje.github.io/tetris-rl-arena-page/paper.html">Paper</a><a href="https://yerkenje.github.io/tetris-rl-arena-page/replay.html">Replays</a></p></div></li>
+    <li><img src="img/marginalia.jpg" alt="Marginalia map of ideas across books" loading="lazy" width="900" height="482"><div class="body"><h3>Marginalia</h3><p>An AI map of ideas across several books, with exact quotes as evidence.</p><p class="links"><a href="https://ibragimkhojanazarov2-hash.github.io/Knoweldge-graph-AI/">Page</a></p></div></li>
+    <li><div class="noimg">Webcam 3D trainer</div><div class="body"><h3>Rehab</h3><p>A camera-based 3D trainer for arm exercises: the webcam tracks the hand and scores each movement.</p><p class="links"><a href="https://adiatursyn77-bit.github.io/rehab-page/">Page</a><a href="https://adiatursyn77-bit.github.io/rehab-page/app/">App</a><a href="https://adiatursyn77-bit.github.io/rehab-page/rehab_paper.pdf">Paper</a></p></div></li>
+  </ul>
+</section>
+
+<section id="slides">
+  <h2>Lecture slides</h2>
+  <p class="col">One lecture a day, then work on the projects. The PDFs keep the slides but not the embedded screen recordings and audio clips.</p>
+  <div class="tablewrap col">
+    <table class="slides">
+      <thead><tr><th>Day</th><th>Lecture</th><th class="num">Slides</th></tr></thead>
+      <tbody>
+        <tr><td>1 · 24 Oct</td><td>Opening, choosing a project, first steps with the agent</td><td class="num">–</td></tr>
+        <tr><td>2 · 25 Oct</td><td><a href="slides/FRP2026_Day2_AI_and_agents.pdf">How does AI work inside? How do we work with AI agents?</a></td><td class="num">58</td></tr>
+        <tr><td>3 · 26 Oct</td><td><a href="slides/FRP2026_Day3_speech.pdf">How does a computer hear and speak?</a></td><td class="num">106</td></tr>
+        <tr><td>4 · 27 Oct</td><td>How does AI see? Vision-language models (Arailym Raikhankyzy)</td><td class="num">–</td></tr>
+        <tr><td>5 · 28 Oct</td><td><a href="slides/FRP2026_Day5_testing.pdf">When is AI wrong? Testing, measurement and safety</a></td><td class="num">113</td></tr>
+        <tr><td>6 · 29 Oct</td><td><a href="slides/FRP2026_Day6_training.pdf">How AI models learn</a></td><td class="num">106</td></tr>
+        <tr><td>7 · 30 Oct</td><td><a href="slides/FRP2026_Day7_sharing.pdf">Share what you found: a paper, a page and a talk</a></td><td class="num">42</td></tr>
+        <tr><td>8 · 31 Oct</td><td>Demo Day: every student presents a working project in 3 minutes</td><td class="num">–</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="video">
+  <h2>Program video</h2>
+  <video controls preload="none" poster="video/poster.jpg" src="video/frp_promo.mp4"></video>
+  <p class="col note">The track's announcement video, 1.5 minutes, made with AI images and an AI voice. Student demo videos are on their project pages above.</p>
+</section>
+
+<p class="foot">ISSAI Fall Research Program 2026, AI Engineering track. Mentors: Vladimir Albrekht and Arailym Raikhankyzy. Institute of Smart Systems and Artificial Intelligence (ISSAI), Nazarbayev University, Astana. <a href="https://issai.nu.edu.kz/frp-2026/">Program page</a></p>
+
+</main>
+</body>
+</html>
