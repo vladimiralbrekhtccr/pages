@@ -101,6 +101,11 @@ ul.proj h3 { margin: 0; font: 600 1.15rem/1.3 var(--f-hand); color: var(--text);
 ul.proj .links { margin-top: auto; gap: 0.4rem; }
 ul.proj .links a { padding: 0.4rem 0.7rem; font-size: 12.5px; }
 .slides td a { font-weight: 700; }
+@media (max-width: 640px) {
+  table.svc thead { display: none; }
+  table.svc tr { display: block; padding: 0.7rem 0; border-bottom: 1px solid var(--rule); }
+  table.svc td { display: block; border: 0; padding: 0.1rem 0; }
+}
 </style>
 </head>
 <body>
@@ -110,9 +115,10 @@ ul.proj .links a { padding: 0.4rem 0.7rem; font-size: 12.5px; }
 <header>
   <p class="kicker">ISSAI Fall Research Program 2026, Nazarbayev University, 24–31 October</p>
   <h1>FRP 2026: AI Engineering track</h1>
-  <p class="lede col">20 high-school students, 8 days, one AI agent each. How we ran the track, what the students built, and the lecture slides.</p>
+  <p class="lede col">About 20 high-school students, 8 days, one AI agent each. How we ran the track, what the students built, and the lecture slides.</p>
   <p class="links">
     <a href="#setup">How it was set up</a>
+    <a href="#services">AI services</a>
     <a href="#projects">Student projects</a>
     <a href="#slides">Lecture slides</a>
     <a href="#video">Program video</a>
@@ -122,7 +128,7 @@ ul.proj .links a { padding: 0.4rem 0.7rem; font-size: 12.5px; }
 <section>
   <h2>FRP in my words</h2>
   <div class="speech">
-    <p>Around 30 students applied for the program, and 20 of them were in our AI Engineering track. There we wanted to teach students how to use AI agents to build a project or do research, and how to share that work. I would say it is what we do day to day, only at a smaller scale in the number of GPUs and in the capabilities of the AI agents.</p>
+    <p>Around 30 students applied for the program, and about 20 of them were in our AI Engineering track. There we wanted to teach students how to use AI agents to build a project or do research, and how to share that work. I would say it is what we do day to day, only at a smaller scale in the number of GPUs and in the capabilities of the AI agents.</p>
     <p>Knowing that I would need to switch context between all of them during the program, I came up with these bricks:</p>
     <ol>
       <li><strong>Online IDE:</strong> no SSH connection needed, and some students could easily work on their tablets.</li>
@@ -139,7 +145,6 @@ ul.proj .links a { padding: 0.4rem 0.7rem; font-size: 12.5px; }
       <li>Use peer learning more actively. During this FRP I noticed how much it helped students, compared with students who worked alone.</li>
     </ol>
     <p>It was quite an interesting experience. Thanks to the students for their good work.</p>
-    <p class="sig">Vladimir Albrekht</p>
   </div>
 </section>
 
@@ -148,7 +153,7 @@ ul.proj .links a { padding: 0.4rem 0.7rem; font-size: 12.5px; }
   <div class="tablewrap col">
     <table>
       <tbody>
-        <tr><td class="big">20 students</td><td>in the AI Engineering track, high-school students from Kazakhstan and abroad.</td></tr>
+        <tr><td class="big">~20 students</td><td>in the AI Engineering track, high-school students from Kazakhstan and abroad.</td></tr>
         <tr><td class="big">8 days</td><td>24–31 October 2026: six lecture days, then a Demo Day with 3-minute talks.</td></tr>
         <tr><td class="big">30 workspaces</td><td>one isolated Docker container each, opened in any browser.</td></tr>
         <tr><td class="big">16 V100</td><td>GPUs for student training jobs, shared through a small queue.</td></tr>
@@ -274,6 +279,30 @@ cat ~/work/jobs/&lt;id&gt;.log</pre>
     </table>
   </div>
   <p class="col">The agents also had skills for web search, checking a page in a real browser, image generation, embeddings, face tracking, speech, and a small RL training example (GRPO). Speech recognition and text-to-speech (Whisper large-v3-turbo, GigaAM for Kazakh, OmniVoice) and an image model ran on the H100s as class services.</p>
+</section>
+
+<section id="services">
+  <h2>Class AI services: speech, images and more</h2>
+  <p class="col">Besides the coding agent, every workspace could call a set of AI models through one OpenAI-style API. No keys: a proxy recognised each workspace, and the same routes worked from the student's web pages through their login. The models ran on the H100s as shared class services, so students could add voice, pictures or search to a project in a few lines.</p>
+  <div class="tablewrap">
+    <table class="svc">
+      <thead><tr><th>Service</th><th>Route</th><th>Model</th><th>Good to know</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Chat and photos</strong></td><td><code>/v1/chat/completions</code></td><td>DeepSeek-V4.1-Flash</td><td>The same model as the coding agent. It also reads photos (a menu, a chart, a screenshot): 10–40 s per photo.</td></tr>
+        <tr><td><strong>Speech to text</strong></td><td><code>/v1/audio/transcriptions</code></td><td>GigaAM for Kazakh, Whisper large-v3-turbo for Russian and English</td><td>Word timings and "who said what" speaker labels. The <code>frp-asr</code> command transcribes any audio or video file.</td></tr>
+        <tr><td><strong>Text to speech</strong></td><td><code>/v1/audio/speech</code></td><td>Piper, OmniVoice</td><td>Kazakh, Russian and English. Piper answers in under a second; OmniVoice sounds nicer but is slower.</td></tr>
+        <tr><td><strong>Images</strong></td><td><code>/v1/images/generations</code></td><td>FLUX.3 klein, with a prompt rewriter</td><td>3–8 s per picture, up to 10 reference images, 300 pictures a day per student. The <code>frp-img</code> command works in the terminal.</td></tr>
+        <tr><td><strong>Embeddings</strong></td><td><code>/v1/embeddings</code></td><td>Qwen3-Embedding-0.6B</td><td>Find similar texts by meaning, across Kazakh, Russian and English: search, matching, recommendations.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <pre><span class="c"># a whole voice bot in three requests: hear, think, speak</span>
+curl $API/audio/transcriptions -F file=@question.wav -F model=gigaam -F language=kk
+curl $API/chat/completions -H "Content-Type: application/json" \
+     -d '{"model": "DeepSeek-V4.1-Flash", "messages": [{"role": "user", "content": "..."}]}'
+curl $API/audio/speech -H "Content-Type: application/json" \
+     -d '{"input": "Сәлем!", "language": "kk", "model": "omnivoice"}' -o answer.wav</pre>
+  <p class="col">Students used them in their projects: the Oynova game asks its questions with pre-made OmniVoice audio, the presentation coach measures speaking pace and filler words from Whisper word timings, and the school-topic videos are narrated by a speech model. Each service came with a short guide written for students, and the agent had skills for them, so "add a Kazakh voice to my page" was a normal request.</p>
 </section>
 
 <section>
