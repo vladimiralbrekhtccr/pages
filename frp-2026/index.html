@@ -106,13 +106,27 @@ ul.proj .links a { padding: 0.4rem 0.7rem; font-size: 12.5px; }
   table.svc tr { display: block; padding: 0.7rem 0; border-bottom: 1px solid var(--rule); }
   table.svc td { display: block; border: 0; padding: 0.1rem 0; }
 }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; gap: 2rem; align-items: center; }
+.hero-text { display: flex; flex-direction: column; gap: 1.1rem; }
+.queen { margin: 0; transform: rotate(1.5deg); }
+.queen img { border: 2px solid var(--text); border-radius: 6px; background: #fff; box-shadow: 7px 7px 0 var(--yellow); width: 100%; height: auto; aspect-ratio: auto; object-fit: contain; }
+.queen figcaption { text-align: center; font-family: var(--f-hand); color: var(--text-2); font-size: 0.95rem; margin-top: 0.5rem; }
+@media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .queen { max-width: 13rem; justify-self: center; } }
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+/* hand-coloured shell: comment, command, flag, string, variable, path */
+pre .c { color: #b9a07c; font-style: italic; }
+pre .k { color: #ff9e6b; font-weight: 600; }
+pre .f { color: #c8e6a0; }
+pre .st { color: #f6de95; }
+pre .v { color: #9fd0ff; }
 </style>
 </head>
 <body>
 <nav class="nav"><div><a href="https://vladimiralbrekhtccr.github.io/portfolio/">Vladimir Albrekht</a><a href="https://vladimiralbrekhtccr.github.io/projects/">Projects</a></div></nav>
 <main>
 
-<header>
+<header class="hero">
+  <div class="hero-text">
   <p class="kicker">ISSAI Fall Research Program 2026, Nazarbayev University, 24–31 October</p>
   <h1>FRP 2026: AI Engineering track</h1>
   <p class="lede col">About 20 high-school students, 8 days, one AI agent each. How we ran the track, what the students built, and the lecture slides.</p>
@@ -123,6 +137,8 @@ ul.proj .links a { padding: 0.4rem 0.7rem; font-size: 12.5px; }
     <a href="#slides">Lecture slides</a>
     <a href="#video">Program video</a>
   </p>
+  </div>
+  <figure class="queen"><img src="img/frp-queen.jpg" alt="The FRP mascot: a white robot girl with cat ears, a glowing blue visor face and a burgundy FRP hoodie, waving" width="540" height="795"><figcaption>Our FRP queen: the class AI agent from the lecture slides.</figcaption></figure>
 </header>
 
 <section>
@@ -257,10 +273,10 @@ ul.proj .links a { padding: 0.4rem 0.7rem; font-size: 12.5px; }
     </div>
   </div>
 
-  <pre><span class="c"># inside a workspace: train on a GPU, then read the log</span>
-sbatch --wrap "python3 train.py"
-squeue                      <span class="c"># your job, and others as "(another student)"</span>
-cat ~/work/jobs/&lt;id&gt;.log</pre>
+  <pre><code><span class="c"># inside a workspace: train on a GPU, then read the log</span>
+<span class="k">sbatch</span> <span class="f">--wrap</span> <span class="st">"python3 train.py"</span>
+<span class="k">squeue</span>                      <span class="c"># your job, and others as "(another student)"</span>
+<span class="k">cat</span> ~/work/jobs/&lt;id&gt;.log</code></pre>
 
   <div class="tablewrap col">
     <table>
@@ -296,12 +312,12 @@ cat ~/work/jobs/&lt;id&gt;.log</pre>
       </tbody>
     </table>
   </div>
-  <pre><span class="c"># a whole voice bot in three requests: hear, think, speak</span>
-curl $API/audio/transcriptions -F file=@question.wav -F model=gigaam -F language=kk
-curl $API/chat/completions -H "Content-Type: application/json" \
-     -d '{"model": "DeepSeek-V4.1-Flash", "messages": [{"role": "user", "content": "..."}]}'
-curl $API/audio/speech -H "Content-Type: application/json" \
-     -d '{"input": "Сәлем!", "language": "kk", "model": "omnivoice"}' -o answer.wav</pre>
+  <pre><code><span class="c"># a whole voice bot in three requests: hear, think, speak</span>
+<span class="k">curl</span> <span class="v">$API</span>/audio/transcriptions <span class="f">-F</span> file=@question.wav <span class="f">-F</span> model=gigaam <span class="f">-F</span> language=kk
+<span class="k">curl</span> <span class="v">$API</span>/chat/completions <span class="f">-H</span> <span class="st">"Content-Type: application/json"</span> \
+     <span class="f">-d</span> <span class="st">'{"model": "DeepSeek-V4.1-Flash", "messages": [{"role": "user", "content": "..."}]}'</span>
+<span class="k">curl</span> <span class="v">$API</span>/audio/speech <span class="f">-H</span> <span class="st">"Content-Type: application/json"</span> \
+     <span class="f">-d</span> <span class="st">'{"input": "Сәлем!", "language": "kk", "model": "omnivoice"}'</span> <span class="f">-o</span> answer.wav</code></pre>
   <p class="col">Students used them in their projects: the Oynova game asks its questions with pre-made OmniVoice audio, the presentation coach measures speaking pace and filler words from Whisper word timings, and the school-topic videos are narrated by a speech model. Each service came with a short guide written for students, and the agent had skills for them, so "add a Kazakh voice to my page" was a normal request.</p>
 </section>
 
