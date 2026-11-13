@@ -1469,7 +1469,7 @@ document.getElementById('layoutBtn').onclick = async () => {
   lay.hotspots = hotspots.map((h) => ({ id: h.id,
     pos: [+h.mesh.position.x.toFixed(2), +h.mesh.position.y.toFixed(2), +h.mesh.position.z.toFixed(2)] }));
   const txt = JSON.stringify(lay);
-  try { await navigator.clipboard.writeText(txt); status('layout copied — send it to Claude to make it permanent'); }
+  try { await navigator.clipboard.writeText(txt); status('layout copied'); }
   catch { prompt('Copy layout:', txt); }
 };
 document.getElementById('dup').onclick = () => {
@@ -1673,7 +1673,7 @@ function updateArrival() {
   }
 }
 
-// ── ask-the-tutor flow (Claude Sonnet via /china_comp/tutor_api/) ──
+// ── ask-the-tutor flow ──
 // ── tutor language: changes both the answer language and the Piper voice ──
 let lang = 'en';   // other languages temporarily disabled
 const langBtns = document.querySelectorAll('#langRow .lang');
